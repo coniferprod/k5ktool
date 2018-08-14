@@ -1,12 +1,26 @@
 ﻿using System;
+using McMaster.Extensions.CommandLineUtils;
 
 namespace k5ktool
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        public static int Main(string[] args)
         {
-            Console.WriteLine("Hello, Kawai K5000 world!");
+            var app = new CommandLineApplication();
+            app.HelpOption();
+
+            var commandArg = app.Argument("command", "The command to issue").IsRequired();
+
+            var filenameOption = app.Option("-f|--filename <FILE>", "Name of the file to process", CommandOptionType.SingleValue).IsRequired();
+
+            app.OnExecute(() =>
+            {
+                Console.WriteLine($"Command = {commandArg.Value}");
+                Console.WriteLine("Filename = " + filenameOption.Value());
+            });
+
+            return app.Execute(args);
         }
     }
 }
