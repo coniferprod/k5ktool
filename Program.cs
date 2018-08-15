@@ -39,7 +39,7 @@ namespace k5ktool
 
                     if (File.Exists(fileName))
                     {
-                        var bank = engine.GetBank(fileName);
+                        var bank = engine.ReadBank(fileName);
                     }
                     else
                     {
