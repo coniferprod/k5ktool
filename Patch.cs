@@ -9,7 +9,7 @@ namespace k5ktool
         public int AdditiveKitCount;
         Source[] Sources;
         int Size;
-        string Name;
+        public string Name;
         string Code;
     }
 }

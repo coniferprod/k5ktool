@@ -16,6 +16,8 @@ namespace k5ktool
         // System exclusive files have a ".syx" extension
         const string SystemExtension = "syx";
 
+        const int PoolSize = 0x20000;
+
         public static int Main(string[] args)
         {
             var app = new CommandLineApplication();
@@ -40,6 +42,13 @@ namespace k5ktool
                     if (File.Exists(fileName))
                     {
                         var bank = engine.ReadBank(fileName);
+                        Console.WriteLine($"Number of patches = {bank.Patches.Keys.Count}");
+
+                        foreach (var p in bank.Patches.Keys) {
+                            var patch = bank.Patches[p];
+                            Console.WriteLine($"{p} {patch.Name}");
+
+                        }
                     }
                     else
                     {
