@@ -12,7 +12,7 @@ namespace k5ktool
         public Patch[] SortedTonePointer;  // remember +1
         public Patch[] SortedIndex;
         public Patch[] SortedName;
-        public Patch[] SortedSources;
+        public Patch[] SortedSourceCount;
         public Patch[] SortedSize;
         public Patch[] SortedCode;
     }

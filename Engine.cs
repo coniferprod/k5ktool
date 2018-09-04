@@ -28,7 +28,7 @@ namespace k5ktool
             bank.SortedTonePointer = new Patch[PATCHES + 1];
             bank.SortedIndex = new Patch[PATCHES];
             bank.SortedName = new Patch[PATCHES];
-            bank.SortedSources = new Patch[PATCHES];
+            bank.SortedSourceCount = new Patch[PATCHES];
             bank.SortedSize = new Patch[PATCHES];
             bank.SortedCode = new Patch[PATCHES];
 
@@ -37,26 +37,18 @@ namespace k5ktool
                 Console.WriteLine($"Reading from '{fileName}'");
                 using (BinaryReader binaryReader = new BinaryReader(fs))
                 {
-                    var count = 0;
-                    for (int index = 0; index < PATCHES; index++)
+                    var patchCount = 0;
+                    for (int patchIndex = 0; patchIndex < PATCHES; patchIndex++)
                     {
                         Patch patch = new Patch();
-                        patch.Index = index;
+                        patch.Index = patchIndex;
                         patch.TonePointer = ReadOffset(binaryReader);
                         patch.IsUsed = (patch.TonePointer != 0);
-                        if (patch.IsUsed)
-                        {
-                            bank.SortedIndex[count] = patch;
-                            bank.SortedTonePointer[count] = patch;
-                            bank.SortedName[count] = patch;
-                            bank.SortedSize[count] = patch;
-                            bank.SortedSources[count] = patch;
-                            bank.SortedCode[count] = patch;
-                            count +=1;
-                        }
 
                         patch.AdditiveKitCount = 0;
                         patch.Sources = new Source[SOURCES];
+
+                        Console.WriteLine(patch);
 
                         for (int sourceIndex = 0; sourceIndex < SOURCES; sourceIndex++)
                         {
@@ -67,18 +59,34 @@ namespace k5ktool
                             {
                                 patch.AdditiveKitCount += 1;
                             }
+
+                            Console.WriteLine($"Source {sourceIndex}: {source}");
                             patch.Sources[sourceIndex] = source;
                         }
 
-                        bank.Patches[count] = patch;
+                        // The source processing is done earlier so that we get the 
+                        // patch with its sources to all the various "Sorted..." arrays
+                        // (but those will have to go).
+                        if (patch.IsUsed)
+                        {
+                            bank.SortedIndex[patchCount] = patch;
+                            bank.SortedTonePointer[patchCount] = patch;
+                            bank.SortedName[patchCount] = patch;
+                            bank.SortedSize[patchCount] = patch;
+                            bank.SortedSourceCount[patchCount] = patch;
+                            bank.SortedCode[patchCount] = patch;
+                            patchCount +=1;
+                        }
+
+                        bank.Patches[patchCount] = patch;
                     }
 
                     var lastPatch = new Patch();
                     lastPatch.Index = PATCHES;
                     lastPatch.TonePointer = ReadOffset(binaryReader);
-                    bank.SortedTonePointer[count] = lastPatch;
+                    bank.SortedTonePointer[patchCount] = lastPatch;
 
-                    bank.PatchCount = count;
+                    bank.PatchCount = patchCount;
 
                     bank.DataPool = ReadData(binaryReader);
 
@@ -86,13 +94,19 @@ namespace k5ktool
                         return (int)p1.TonePointer - (int)p2.TonePointer;
                     });
                     bank.Base = bank.SortedTonePointer[0].TonePointer;
+
+                    Console.WriteLine($"Bank has {bank.PatchCount} patches");
+
                     for (int p = 0; p < bank.PatchCount; p++)
                     {
                         var patch = bank.SortedTonePointer[p];
                         patch.TonePointer -= bank.Base;
+                        Console.WriteLine($"Patch {patch.Index}: TonePointer = {patch.TonePointer}");
+
                         for (int s = 0; s < SOURCES; s++)
                         {
                             var source = patch.Sources[s];
+                            Console.WriteLine($"Source {s}");
                             if (source.IsAdditive)
                             {
                                 source.AdditiveKitPointer -= bank.Base;
@@ -108,10 +122,54 @@ namespace k5ktool
                         var patch = bank.SortedTonePointer[p];
                         patch.SourceCount = bank.DataPool[patch.TonePointer + SRC_NMBR_OFFSET];
                         patch.Size = TONE_COMMON_DATA_SIZE + SOURCE_DATA_SIZE * patch.SourceCount + ADD_WAVE_KIT_SIZE * patch.AdditiveKitCount;
-                        patch.Padding = bank.SortedTonePointer[p + 1].TonePointer - patch.TonePointer - patch.Size;
+                        //patch.Padding = bank.SortedTonePointer[p + 1].TonePointer - patch.TonePointer - patch.Size;
 
                         // Next up: patch name
+                        var patchNameChars = new char[NAME_SIZE];
+                        var namePointer = patch.TonePointer + NAME_OFFSET;
+                        for (int i = 0; i < NAME_SIZE; i++)
+                        {
+                            patchNameChars[i] = (char) bank.DataPool[namePointer];
+                            namePointer++;
+                        }
+                        // no need for trailing null char
+                        patch.Name = new string(patchNameChars);
                     }
+
+                    Array.Sort(bank.SortedSourceCount, delegate(Patch p1, Patch p2) {
+                        return (int)p1.SourceCount - (int)p2.SourceCount;
+                    });
+
+                    Array.Sort(bank.SortedSize, delegate(Patch p1, Patch p2) {
+                        return (int)p1.Size - (int)p2.Size;
+                    });
+
+                    Array.Sort(bank.SortedName, delegate(Patch p1, Patch p2) {
+                        return string.Compare(p1.Name, p2.Name, StringComparison.OrdinalIgnoreCase);
+                    });
+
+                    /* analyze tone structure: */
+                    for (int p = 0; p < bank.PatchCount; p++)
+                    {
+                        var patch = bank.SortedIndex[p];
+                        var patchCodeChars = new char[SOURCES];
+                        int s = 0;
+                        for (s = 0; s < patch.SourceCount; s++)
+                        {
+                            var source = patch.Sources[s];
+                            patchCodeChars[s] = source.IsAdditive ? 'A' : 'P';
+                        }
+                        while (s < SOURCES)
+                        {
+                            patchCodeChars[s] = '-';
+                            s++;
+                        }
+                        patch.Code = new string(patchCodeChars);
+                    }
+
+                    Array.Sort(bank.SortedCode, delegate(Patch p1, Patch p2) {
+                        return string.Compare(p1.Name, p2.Name, StringComparison.OrdinalIgnoreCase);
+                    });
                 }
             }
 

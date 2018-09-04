@@ -39,3 +39,4 @@ with an applied displacement.
 | Offset | Data |
 | ------ | ---- |
 | 000000 | Offsets to patch data |
+
