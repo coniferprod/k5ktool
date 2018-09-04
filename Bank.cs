@@ -15,5 +15,10 @@ namespace k5ktool
         public Patch[] SortedSourceCount;
         public Patch[] SortedSize;
         public Patch[] SortedCode;
+
+        public override string ToString()
+        {
+            return $"PatchCount={PatchCount}";
+        }
     }
 }

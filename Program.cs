@@ -41,12 +41,49 @@ namespace k5ktool
 
                     if (File.Exists(fileName))
                     {
+                        /* 
                         var bank = engine.ReadBank(fileName);
-
                         var bytesUsed = bank.SortedTonePointer[bank.PatchCount].TonePointer;
                         var percentageUsed = bytesUsed * 100.0 / (float)POOL_SIZE;
-
                         Console.WriteLine($"{fileName} contains {bank.PatchCount} patches using {bytesUsed} bytes ({percentageUsed}% of memory)");
+                        */
+                        uint[] pointers = engine.ReadPointers(fileName);
+                        int index = 0;
+                        int i = 0;
+                        for (i = 0; i < 128; i++)
+                        {
+                            Console.Write(string.Format("{0} {1:X6} -- ", i, pointers[index]));
+                            index++;
+                            for (int s = 0; s < 6; s++)
+                            {
+                                Console.Write(string.Format("S{0}={1:X6} ", s, pointers[index]));
+                                index++;
+                            }
+                            Console.WriteLine();
+                        }
+                        var basePointer = pointers[index];
+                        Console.WriteLine("{0:X6}", basePointer);
+
+                        // Adjust the pointers
+                        index = 0;
+                        for (index = 0; index < pointers.Length - 1; index++)
+                        {
+                            pointers[index] -= basePointer;
+                        }
+
+                        Console.WriteLine("After adjusting pointers:");
+                        index = 0;
+                        for (i = 0; i < 128; i++)
+                        {
+                            Console.Write(string.Format("{0} {1:X6} -- ", i, pointers[index]));
+                            index++;
+                            for (int s = 0; s < 6; s++)
+                            {
+                                Console.Write(string.Format("S{0}={1:X6} ", s, pointers[index]));
+                                index++;
+                            }
+                            Console.WriteLine();
+                        }
 
                     }
                     else

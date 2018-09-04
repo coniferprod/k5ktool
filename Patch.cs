@@ -15,7 +15,10 @@ namespace k5ktool
 
         public override string ToString()
         {
-            return $"Index={Index} IsUsed={IsUsed} TonePointer={TonePointer} SourceCount={SourceCount} AdditiveKitCount={AdditiveKitCount}";
+            return string.Format(
+                "Index={0} IsUsed={1} TonePointer={2:X6} SourceCount={3} AdditiveKitCount={4}",
+                Index, IsUsed, TonePointer, SourceCount, AdditiveKitCount
+            );
         }
     }
 }

@@ -21,6 +21,34 @@ namespace k5ktool
         const int WAVE_KIT_ADD_MASK = 0x04;
         const int ADD_WAVE_KIT_SIZE = 806;
 
+        public uint[] ReadPointers(string fileName)
+        {
+            uint[] pointers = new uint[PATCHES * 7 + 1];
+            int index = 0;
+            using (FileStream fs = File.OpenRead(fileName))
+            {
+                using (BinaryReader binaryReader = new BinaryReader(fs))
+                {
+                    for (int patchIndex = 0; patchIndex < PATCHES; patchIndex++)
+                    {
+                        var tonePointer = ReadOffset(binaryReader);
+                        pointers[index] = tonePointer;
+                        index++;
+
+                        for (int sourceIndex = 0; sourceIndex < SOURCES; sourceIndex++)
+                        {
+                            var sourcePointer = ReadOffset(binaryReader);
+                            pointers[index] = sourcePointer;
+                            index++;
+                        }
+                    }
+                    var highPointer = ReadOffset(binaryReader);
+                    pointers[index] = highPointer;
+                }
+            }
+            return pointers;
+        }
+
         public Bank ReadBank(string fileName)
         {
             Bank bank = new Bank();
@@ -37,11 +65,14 @@ namespace k5ktool
                 Console.WriteLine($"Reading from '{fileName}'");
                 using (BinaryReader binaryReader = new BinaryReader(fs))
                 {
+                    /* read the pointer table (128 * 7 pointers) and build list of used patches: */
                     var patchCount = 0;
                     for (int patchIndex = 0; patchIndex < PATCHES; patchIndex++)
                     {
                         Patch patch = new Patch();
                         patch.Index = patchIndex;
+
+                        /* 1 pointer to tone data */
                         patch.TonePointer = ReadOffset(binaryReader);
                         patch.IsUsed = (patch.TonePointer != 0);
 
@@ -50,6 +81,7 @@ namespace k5ktool
 
                         Console.WriteLine(patch);
 
+                        /* 6 pointers to ADD wave kits */
                         for (int sourceIndex = 0; sourceIndex < SOURCES; sourceIndex++)
                         {
                             var source = new Source();
@@ -83,6 +115,7 @@ namespace k5ktool
 
                     var lastPatch = new Patch();
                     lastPatch.Index = PATCHES;
+                    /* read the 'memory high water mark' pointer: */
                     lastPatch.TonePointer = ReadOffset(binaryReader);
                     bank.SortedTonePointer[patchCount] = lastPatch;
 
