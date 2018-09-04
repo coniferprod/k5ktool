@@ -42,13 +42,6 @@ namespace k5ktool
                     if (File.Exists(fileName))
                     {
                         var bank = engine.ReadBank(fileName);
-                        Console.WriteLine($"Number of patches = {bank.Patches.Keys.Count}");
-
-                        foreach (var p in bank.Patches.Keys) {
-                            var patch = bank.Patches[p];
-                            Console.WriteLine($"{p} {patch.Name}");
-
-                        }
                     }
                     else
                     {

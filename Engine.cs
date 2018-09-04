@@ -6,79 +6,73 @@ namespace k5ktool
 {
     public class Engine
     {
-        const uint MaxPatchCount = 128;  // the max number of patches in a bank
+        const int PATCHES = 128;  // the max number of patches in a bank
 
-        const uint MaxSourceCount = 6;  // the max number of sources in a patch
+        const int SOURCES = 6;  // the max number of sources in a patch
 
-        const int DataSize = 0x20000;
-
-        struct PatchOffsets
-        {
-            public uint index;
-            public uint tone;
-            public uint[] sources;
-        }
+        const int POOL_SIZE = 0x20000;
 
         public Bank ReadBank(string fileName)
         {
             Bank bank = new Bank();
+            bank.Patches = new Patch[PATCHES + 1];
+            bank.SortedTonePointer = new Patch[PATCHES + 1];
+            bank.SortedIndex = new Patch[PATCHES];
+            bank.SortedName = new Patch[PATCHES];
+            bank.SortedSources = new Patch[PATCHES];
+            bank.SortedSize = new Patch[PATCHES];
+            bank.SortedCode = new Patch[PATCHES];
 
             using (FileStream fs = File.OpenRead(fileName))
             {
                 Console.WriteLine($"Reading from '{fileName}'");
                 using (BinaryReader binaryReader = new BinaryReader(fs))
                 {
-                    List<PatchOffsets> allOffsets = new List<PatchOffsets>();
-
-                    var patchCount = 0;
-                    for (uint patchIndex = 0; patchIndex < MaxPatchCount; patchIndex++)
+                    var count = 0;
+                    for (int index = 0; index < PATCHES; index++)
                     {
-                        PatchOffsets offsets = new PatchOffsets();
-                        offsets.index = patchIndex;
-                        offsets.tone = ReadOffset(binaryReader);
-
-                        offsets.sources = new uint[MaxSourceCount];
-                        for (int sourceIndex = 0; sourceIndex < MaxSourceCount; sourceIndex++)
+                        Patch patch = new Patch();
+                        patch.Index = index;
+                        patch.TonePointer = ReadOffset(binaryReader);
+                        patch.IsUsed = (patch.TonePointer != 0);
+                        if (patch.IsUsed)
                         {
-                            offsets.sources[sourceIndex] = ReadOffset(binaryReader);
+                            bank.SortedIndex[count] = patch;
+                            bank.SortedTonePointer[count] = patch;
+                            bank.SortedName[count] = patch;
+                            bank.SortedSize[count] = patch;
+                            bank.SortedSources[count] = patch;
+                            bank.SortedCode[count] = patch;
+                            count +=1;
                         }
 
-                        if (offsets.tone != 0)
+                        patch.AdditiveKitCount = 0;
+                        patch.Sources = new Source[SOURCES];
+
+                        for (int sourceIndex = 0; sourceIndex < SOURCES; sourceIndex++)
                         {
-                            allOffsets.Add(offsets);
+                            var source = new Source();
+                            source.AdditiveKitPointer = ReadOffset(binaryReader);
+                            source.IsAdditive = (source.AdditiveKitPointer != 0);
+                            if (source.IsAdditive)
+                            {
+                                patch.AdditiveKitCount += 1;
+                            }
+                            patch.Sources[sourceIndex] = source;
                         }
 
-                        var sourceOffsets = string.Join(", ", offsets.sources);
-                        Console.WriteLine($"{patchIndex.ToString("000")}: tone = {offsets.tone}, sources = {sourceOffsets}");
+                        bank.Patches[count] = patch;
                     }
 
-                    var lastOffset = ReadOffset(binaryReader);
-                    Console.WriteLine($"lastOffset = {lastOffset}");
+                    var lastPatch = new Patch();
+                    lastPatch.Index = PATCHES;
+                    lastPatch.TonePointer = ReadOffset(binaryReader);
+                    bank.SortedTonePointer[count] = lastPatch;
 
-                    var displacement = allOffsets[0].tone;
-                    Console.WriteLine($"displacement = {displacement}");
-                    
-                    for (var i = 0; i < allOffsets.Count; i++)
-                    {
-                        PatchOffsets offsets = allOffsets[i];
-                        offsets.tone -= displacement;
-                        for (int sourceIndex = 0; sourceIndex < MaxSourceCount; sourceIndex++)
-                        {
-                            offsets.sources[sourceIndex] -= displacement;
-                        }
-                    }
+                    bank.PatchCount = count;
 
-                    Console.WriteLine("After applying displacement:");
-                    foreach (var offsets in allOffsets)
-                    {
-                        var sourceOffsets = string.Join(", ", offsets.sources);
-                        Console.WriteLine($"{offsets.index.ToString("000")}: tone = {offsets.tone}, sources = {sourceOffsets}");
-                    }
-
-                    var data = binaryReader.ReadBytes(DataSize);
-
+                    bank.DataPool = ReadData(binaryReader);
                 }
-
             }
 
             return bank;
@@ -92,6 +86,12 @@ namespace k5ktool
                 Array.Reverse(data);
             }
             return BitConverter.ToUInt32(data, 0);
+        }
+
+        byte[] ReadData(BinaryReader br)
+        {
+            var data = br.ReadBytes(POOL_SIZE);
+            return data;  // TODO: need to convert endiannness?
         }
     }
 }

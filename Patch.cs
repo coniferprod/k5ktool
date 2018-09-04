@@ -7,8 +7,9 @@ namespace k5ktool
         public uint TonePointer;
         public int SourceCount;
         public int AdditiveKitCount;
-        Source[] Sources;
+        public Source[] Sources;
         int Size;
+        int Padding;
         public string Name;
         string Code;
     }
