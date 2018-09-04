@@ -7,7 +7,7 @@ namespace k5ktool
         public byte[] DataPool;
         public Patch[] Patches;
         public int PatchCount;
-        uint Base;
+        public uint Base;
 
         public Patch[] SortedTonePointer;  // remember +1
         public Patch[] SortedIndex;

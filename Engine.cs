@@ -11,6 +11,15 @@ namespace k5ktool
         const int SOURCES = 6;  // the max number of sources in a patch
 
         const int POOL_SIZE = 0x20000;
+        const int TONE_COMMON_DATA_SIZE = 82;
+        const int NAME_OFFSET = 40;
+        const int NAME_SIZE = 8;
+        const int SRC_NMBR_OFFSET = 51;
+
+        const int SOURCE_DATA_SIZE = 86;
+        const int WAVE_KIT_MSB_OFFSET = 28;
+        const int WAVE_KIT_ADD_MASK = 0x04;
+        const int ADD_WAVE_KIT_SIZE = 806;
 
         public Bank ReadBank(string fileName)
         {
@@ -72,6 +81,37 @@ namespace k5ktool
                     bank.PatchCount = count;
 
                     bank.DataPool = ReadData(binaryReader);
+
+                    Array.Sort(bank.SortedTonePointer, delegate(Patch p1, Patch p2) {
+                        return (int)p1.TonePointer - (int)p2.TonePointer;
+                    });
+                    bank.Base = bank.SortedTonePointer[0].TonePointer;
+                    for (int p = 0; p < bank.PatchCount; p++)
+                    {
+                        var patch = bank.SortedTonePointer[p];
+                        patch.TonePointer -= bank.Base;
+                        for (int s = 0; s < SOURCES; s++)
+                        {
+                            var source = patch.Sources[s];
+                            if (source.IsAdditive)
+                            {
+                                source.AdditiveKitPointer -= bank.Base;
+                            }
+                        }
+                    }
+
+                    bank.Patches[PATCHES].TonePointer -= bank.Base;
+
+                    /* analyze number of sources, size and name: */
+                    for (int p = 0; p < bank.PatchCount; p++)
+                    {
+                        var patch = bank.SortedTonePointer[p];
+                        patch.SourceCount = bank.DataPool[patch.TonePointer + SRC_NMBR_OFFSET];
+                        patch.Size = TONE_COMMON_DATA_SIZE + SOURCE_DATA_SIZE * patch.SourceCount + ADD_WAVE_KIT_SIZE * patch.AdditiveKitCount;
+                        patch.Padding = bank.SortedTonePointer[p + 1].TonePointer - patch.TonePointer - patch.Size;
+
+                        // Next up: patch name
+                    }
                 }
             }
 
