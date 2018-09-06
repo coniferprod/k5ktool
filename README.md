@@ -2,20 +2,12 @@
 
 Patch management utilities for the Kawai K5000 Advanced Additive Synthesizer (1996).
 
-## Usage
-
-# Python
-
 Requires Python 3.6 or later.
+
+## Usage
 
 Create a Python virtual environment with `python3 -mvenv venv` and activate it
 with `sourcevenv/bin/activate`. Then run the program with `python3 k5ktool.py cmd [options]`.
-
-# .NET Core version
-
-Requires .NET Core 2.1 or later. To run, issue the following command:
-
-`dotnet run list --filename somebank.kaa`
 
 ## The KAA and KA1 file formats
 
@@ -48,4 +40,3 @@ with an applied displacement.
 | Offset | Data |
 | ------ | ---- |
 | 000000 | Offsets to patch data |
-
