@@ -1,13 +1,17 @@
 # k5ktool
 
-Patch management utilities for the Kawai K5000 Advanced Additive Synthesizer (1996).
+Patch management utilities for the 
+[Kawai K5000](https://en.wikipedia.org/wiki/Kawai_K5000)
+Advanced Additive Synthesizer (1996).
+
+_(work in progress)_
 
 Requires Python 3.6 or later.
 
 ## Usage
 
 Create a Python virtual environment with `python3 -mvenv venv` and activate it
-with `sourcevenv/bin/activate`. Then run the program with `python3 k5ktool.py cmd [options]`.
+with `source venv/bin/activate`. Then run the program with `python3 k5ktool.py cmd [options]`.
 
 ## The KAA and KA1 file formats
 
@@ -40,3 +44,5 @@ with an applied displacement.
 | Offset | Data |
 | ------ | ---- |
 | 000000 | Offsets to patch data |
+
+_(to be continued)_
