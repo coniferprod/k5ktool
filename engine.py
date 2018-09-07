@@ -9,6 +9,9 @@ ADDITIVE_WAVE_KIT_SIZE = 806
 NAME_OFFSET = 40
 NAME_SIZE = 8
 
+SYSEX_HEADER = [0xF0, 0x40]
+SYSEX_FOOTER = 0xF7
+
 class Bank:
     def __init__(self):
         self.patches = []
@@ -115,3 +118,13 @@ def read_bank(filename):
         patch.source_types = source_types
 
     return (bank, POOL_SIZE - displacement)
+
+dump_commands = {'one_single': [0x20, 0x00, 0x0A, 0x00, 0x00]}
+
+def sysex_message(command, channel: int, data) -> bytearray:
+    msg = bytearray(SYSEX_HEADER)
+    msg.append(channel)
+    msg.extend(dump_commands[command])
+    msg.extend(data)
+    msg.append(SYSEX_FOOTER)
+    return msg
