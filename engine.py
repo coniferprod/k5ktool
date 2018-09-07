@@ -24,6 +24,15 @@ class Bank:
     def patch_count(self):
         return len(self.patches)
 
+    def get_patch_data(self, patch_index):
+        if self.data == None:
+            return None
+        patch = self.patches[patch_index]
+        patch_start_offset = patch.tone_pointer
+        patch_end_offset = patch_start_offset + patch.size
+        print('data for patch {0} = [{1} : {2}]'.format(patch_index, patch_start_offset, patch_end_offset))
+        return self.data[patch_start_offset : patch_end_offset]
+
 class Patch:
     def __init__(self):
         self.is_used = False

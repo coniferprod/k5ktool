@@ -28,7 +28,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Kawai K5000 helper')
     parser.add_argument('command')
     parser.add_argument('-f', '--filename', help='Name of sound bank file')
-    parser.add_argument('-c-', '--channel', help='MIDI channel to use (1...16)', type=int)
+    parser.add_argument('-c', '--channel', help='MIDI channel to use (1...16)', type=int)
+    parser.add_argument('-p', '--patch', help='Patch number in bank (1...128)', type=int)
     args = parser.parse_args()
 
     if args.filename == None:
