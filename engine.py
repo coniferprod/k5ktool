@@ -8,6 +8,7 @@ SOURCE_DATA_SIZE = 86
 ADDITIVE_WAVE_KIT_SIZE = 806
 NAME_OFFSET = 40
 NAME_SIZE = 8
+VOLUME_OFFSET = 48
 
 SYSEX_HEADER = [0xF0, 0x40]
 SYSEX_FOOTER = 0xF7
@@ -44,6 +45,9 @@ class Patch:
         self.size = 0
         self.patch_name = ''
         self.patch_index = 0
+
+        self.volume = 0
+
     
     def add_source(self, index, source):
         self.sources[index] = source
@@ -68,16 +72,22 @@ class Source:
 def read_bank(filename):
     bank = Bank()
 
+    word_size = 4
+    offset = 0
     with open(filename, 'rb') as f:
         for patch_index in range(0, NUM_PATCHES):
             patch = Patch()
-            tone_pointer = int.from_bytes(f.read(4), byteorder='big')
+            tone_pointer = int.from_bytes(f.read(word_size), byteorder='big')
+            #print("{:08x} {:03d}: tone_pointer = {:08x}".format(offset, patch_index + 1, tone_pointer))
+            offset += word_size
             patch.tone_pointer = tone_pointer
             patch.is_used = tone_pointer != 0
             patch.patch_index = patch_index + 1
             source_pointers = []
             for source_index in range(0, NUM_SOURCES):
-                source_pointer = int.from_bytes(f.read(4), byteorder='big')
+                source_pointer = int.from_bytes(f.read(word_size), byteorder='big')
+                #print("{:08x}   {:03d}: source_pointer = {:08x}".format(offset, source_index + 1, source_pointer))
+                offset += word_size
                 source = Source(pointer=source_pointer)
                 if source.is_additive:
                     patch.additive_kit_count += 1
@@ -86,24 +96,32 @@ def read_bank(filename):
             if patch.is_used:
                 bank.add_patch(patch)
 
-        displacement = int.from_bytes(f.read(4), byteorder='big')
+        displacement = int.from_bytes(f.read(word_size), byteorder='big')
+        #print('{:08x} displacement = {:08x}'.format(offset, displacement))
+        offset += word_size
 
         bank.data = f.read(POOL_SIZE)
+        offset += POOL_SIZE
 
         tone_pointers = [p.tone_pointer for p in bank.patches]
         tone_pointers.append(displacement)
         sorted_tone_pointers = sorted(tone_pointers)
         base = sorted_tone_pointers[0]
+        #print('base = {:08x}'.format(base))
 
     for p in range(0, bank.patch_count()):
         patch = bank.patches[p]
         patch.adjust_pointer(base)
+        #print("{:03d}: tone_pointer = {:08x}".format(p + 1, patch.tone_pointer))
         for s in range(0, len(patch.sources)):
             source = patch.sources[s]
             if source.is_additive:
                 source.adjust_pointer(base)
+                #print("  {:03d}: source_pointer = {:08x}".format(s + 1, source.additive_kit_pointer))
+               
     displacement -= base
-
+    #print('adjusted displacement = {:08x}'.format(displacement))
+       
     for p in range(0, bank.patch_count()):
         patch = bank.patches[p]
         patch.source_count = bank.data[patch.tone_pointer + SOURCE_COUNT_OFFSET]
@@ -112,8 +130,6 @@ def read_bank(filename):
         name_data = bank.data[name_offset : name_offset + NAME_SIZE]
         patch.patch_name = name_data.decode('utf-8')
 
-    for p in range(0, bank.patch_count()):
-        patch = bank.patches[p]
         source_types = ''
         for s in range(0, patch.source_count):
             source = patch.sources[s]
@@ -125,6 +141,8 @@ def read_bank(filename):
             source_types += '-'
             s += 1
         patch.source_types = source_types
+
+        patch.volume = bank.data[VOLUME_OFFSET]
 
     return (bank, POOL_SIZE - displacement)
 

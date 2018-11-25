@@ -13,9 +13,9 @@ def list(filename):
     free_percentage = free_memory * 100.0 / float(POOL_SIZE)
 
     print('"{0}" contains {1} patches. {2} bytes ({3:.1f}% of memory) free.'.format(os.path.basename(filename), bank.patch_count(), free_memory, free_percentage))
-    print('number name  	sources  size')
+    print('number name  	sources  size  vol')
     for p in bank.patches:
-        print('{0:4}  {1}  {2}  {3}'.format(p.patch_index, p.patch_name, p.source_types, p.size))
+        print('{0:4}  {1}  {2}  {3:4d}  {4:3}'.format(p.patch_index, p.patch_name, p.source_types, p.size, p.volume))
 
 def make_sysex(filename, channel: int):
     print('Making SysEx from {0}'.format(filename))
