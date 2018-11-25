@@ -8,7 +8,13 @@ from engine import read_bank
 from engine import POOL_SIZE
 from engine import sysex_message
 
-def list(filename):
+def list(filename: str):
+    """List the contents of the bank with the given filename.
+    
+    :param filename: The name of the bank file
+    :type filename: str
+    """
+
     (bank, free_memory) = read_bank(filename)
     free_percentage = free_memory * 100.0 / float(POOL_SIZE)
 
@@ -17,7 +23,7 @@ def list(filename):
     for p in bank.patches:
         print('{0:4}  {1}  {2}  {3:4d}  {4:3}'.format(p.patch_index, p.patch_name, p.source_types, p.size, p.volume))
 
-def make_sysex(filename, channel: int):
+def make_sysex(filename: str, channel: int):
     print('Making SysEx from {0}'.format(filename))
     (bank, free_memory) = read_bank(filename)
     msg = sysex_message('one_single', channel, bytes([0x00]))

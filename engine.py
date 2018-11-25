@@ -13,28 +13,22 @@ VOLUME_OFFSET = 48
 SYSEX_HEADER = [0xF0, 0x40]
 SYSEX_FOOTER = 0xF7
 
-class Bank:
-    def __init__(self):
-        self.patches = []
-        self.data = None
-        self.base = 0
+class Source:
+    """A source element in a patch."""
 
-    def add_patch(self, patch):
-        self.patches.append(patch)
+    def __init__(self, pointer: int):
+        self.additive_kit_pointer = pointer
+        self.is_additive = self.additive_kit_pointer != 0
 
-    def patch_count(self):
-        return len(self.patches)
+    def adjust_pointer(self, displacement: int):
+        self.additive_kit_pointer -= displacement
 
-    def get_patch_data(self, patch_index):
-        if self.data == None:
-            return None
-        patch = self.patches[patch_index]
-        patch_start_offset = patch.tone_pointer
-        patch_end_offset = patch_start_offset + patch.size
-        print('data for patch {0} = [{1} : {2}]'.format(patch_index, patch_start_offset, patch_end_offset))
-        return self.data[patch_start_offset : patch_end_offset]
+    def __str__(self):
+        return 'is_additive={0} additive_kit_pointer={1:X}'.format(self.is_additive, self.additive_kit_pointer)
 
 class Patch:
+    """A patch describing a sound."""
+    
     def __init__(self):
         self.is_used = False
         self.additive_kit_count = 0
@@ -58,18 +52,36 @@ class Patch:
     def __str__(self):
         return 'is_used={0} tone_pointer={1:X}'.format(self.is_used, self.tone_pointer)
 
-class Source:
-    def __init__(self, pointer: int):
-        self.additive_kit_pointer = pointer
-        self.is_additive = self.additive_kit_pointer != 0
+class Bank:
+    """A bank of patches."""
 
-    def adjust_pointer(self, displacement: int):
-        self.additive_kit_pointer -= displacement
+    def __init__(self):
+        self.patches = []
+        self.data = None
+        self.base = 0
 
-    def __str__(self):
-        return 'is_additive={0} additive_kit_pointer={1:X}'.format(self.is_additive, self.additive_kit_pointer)
+    def add_patch(self, patch):
+        self.patches.append(patch)
 
-def read_bank(filename):
+    def patch_count(self):
+        return len(self.patches)
+
+    def get_patch_data(self, patch_index: int):
+        if self.data == None:
+            return None
+        patch = self.patches[patch_index]
+        patch_start_offset = patch.tone_pointer
+        patch_end_offset = patch_start_offset + patch.size
+        print('data for patch {0} = [{1} : {2}]'.format(patch_index, patch_start_offset, patch_end_offset))
+        return self.data[patch_start_offset : patch_end_offset]
+
+def read_bank(filename: str):
+    """Read the contents of the bank in the named file.
+
+    :param filename The name of the bank file
+    :type filename: str
+    """
+
     bank = Bank()
 
     word_size = 4
