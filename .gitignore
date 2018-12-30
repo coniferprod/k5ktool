@@ -1,5 +1,11 @@
 # Adapted from https://github.com/dotnet/core/blob/master/.gitignore
 
+# Swift Package Manager (see https://github.com/github/gitignore/blob/master/Swift.gitignore)
+Packages/
+Package.pins
+Package.resolved
+.build/
+
 *.swp
 *.*~
 project.lock.json
