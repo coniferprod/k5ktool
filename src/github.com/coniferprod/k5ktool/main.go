@@ -68,6 +68,7 @@ const (
 type patchData struct {
 	index            int
 	tonePtr          int32
+	isUsed           bool
 	sources          [numSources]sourceData
 	sourceCount      int
 	size             int
@@ -103,6 +104,11 @@ const (
 	algorithm3 effectAlgorithm = 2
 	algorithm4 effectAlgorithm = 3
 )
+
+var effectNames = []string{"Early Reflection 1", "Early Reflection 2", "Tap Delay 1", "Tap Delay 2", "Single Delay", "Dual Delay", "Stereo Delay", "Cross Delay", "Auto Pan", "Auto Pan & Delay", "Chorus 1", "Chorus 2", "Chorus 1 & Delay", "Chorus 2 & Delay", "Flanger 1", "Flanger 2", "Flanger 1 & Delay", "Flanger 2 & Delay", "Ensemble", "Ensemble & Delay", "Celeste", "Celeste & Delay", "Tremolo", "Tremolo & Delay", "Phaser 1", "Phaser 2", "Phaser 1 & Delay", "Phaser 2 & Delay", "Rotary", "Autowah", "Bandpass", "Exciter", "Enhancer", "Overdrive", "Distortion", "Overdrive & Delay", "Distortion & Delay"}
+
+// There seems to be a conflict in the manual: there are 37 effect names, but the number of effects is reported to be 36.
+// Cross-check this with the actual synth.
 
 type reverbType int
 
@@ -156,8 +162,10 @@ type sourceData struct {
 }
 
 type bankData struct {
-	patches []patchData
-	data    [poolSize]byte
+	patches     []patchData
+	patchCount  int
+	data        [poolSize]byte
+	usedPatches []patchData
 }
 
 type header struct {
@@ -170,17 +178,17 @@ func readBankData(bs []byte) bankData {
 
 	var b bankData
 
+	// Read the pointer table (128 * 7 pointers) and build list of used patches
+	patchCount := 0
 	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
 		var tonePtr int32
 		err := binary.Read(buf, binary.BigEndian, &tonePtr)
 		if err != nil {
 			fmt.Println("binary read failed:", err)
 		}
-		p := patchData{index: patchIndex, tonePtr: tonePtr}
-		//p.index = patchIndex
-		//p.tonePtr = tonePtr
-		//fmt.Printf("%03d: %08x\n", p.index+1, p.tonePtr)
+		p := patchData{index: patchIndex, tonePtr: tonePtr, isUsed: tonePtr != 0, additiveKitCount: 0}
 
+		// Pointers to ADD wave kits
 		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
 			var sourcePtr int32
 			err := binary.Read(buf, binary.BigEndian, &sourcePtr)
@@ -189,8 +197,6 @@ func readBankData(bs []byte) bankData {
 			}
 
 			s := sourceData{additiveKitPtr: sourcePtr, isAdditive: sourcePtr != 0}
-			//s.additiveKitPtr = sourcePtr
-			//s.isAdditive = s.additiveKitPtr != 0
 			if s.isAdditive {
 				p.additiveKitCount++
 			}
@@ -198,11 +204,13 @@ func readBankData(bs []byte) bankData {
 			//fmt.Printf("  %d: %08x\n", sourceIndex+1, sourcePtr)
 		}
 
-		if p.tonePtr != 0 {
-			b.patches = append(b.patches, p)
+		if p.isUsed {
+			b.usedPatches = append(b.patches, p)
+			patchCount++
 		}
 	}
 
+	// Read the 'memory high water mark' pointer
 	var displacement int32
 	err := binary.Read(buf, binary.BigEndian, &displacement)
 	if err != nil {
@@ -210,6 +218,9 @@ func readBankData(bs []byte) bankData {
 	}
 	fmt.Printf("displacement = %08x\n", displacement)
 
+	b.patchCount = patchCount
+
+	// Read the data pool
 	var data [poolSize]byte
 	err = binary.Read(buf, binary.BigEndian, &data)
 	if err != nil {
@@ -217,6 +228,7 @@ func readBankData(bs []byte) bankData {
 	}
 	b.data = data
 
+	// Adjust any non-zero tone pointers
 	tonePtrs := make([]int, 0)
 	for i := 0; i < len(b.patches); i++ {
 		ptr := int(b.patches[i].tonePtr)
@@ -253,6 +265,29 @@ func readBankData(bs []byte) bankData {
 
 func parsePatchData(bd bankData) bank {
 	var b bank
+
+	for i := 0; i < numPatches; i++ {
+		dataStart := i * 1024
+		dataEnd := dataStart + 1024
+		d := bd.data[dataStart:dataEnd]
+		c := commonData{algorithm: effectAlgorithm(d[0]), reverb: reverbType(d[1])}
+
+		e1 := effect{effectType: d[7], depth: d[8]}
+		e2 := effect{effectType: d[13], depth: d[14]}
+		e3 := effect{effectType: d[19], depth: d[20]}
+		e4 := effect{effectType: d[25], depth: d[26]}
+
+		c.effects = [4]effect{e1, e2, e3, e4}
+
+		nameStart := dataStart + nameOffset
+		nameData := d[nameStart : nameStart+nameSize]
+		nameData = bytes.TrimRight(nameData, "\x00")
+		c.name = string(nameData)
+
+		p := patch{common: c}
+
+		b.patches[i] = p
+	}
 
 	return b
 }
@@ -300,27 +335,6 @@ func parsePatchData(bd bankData) bank {
 func listPatches(b bank) {
 	for i := 0; i < numPatches; i++ {
 		p := b.patches[i]
-
-		sourceTypes := ""
-		for j := 0; j < b.patches[i].sourceCount; j++ {
-			s := p.sources[j]
-			fmt.Printf("source #%d: %v", j+1, s)
-			if s.isAdditive {
-				sourceTypes += "A"
-			} else {
-				sourceTypes += "P"
-			}
-		}
-		sn := p.sourceCount
-		for sn < numSources {
-			sourceTypes += "-"
-			sn++
-		}
-		b.patches[i].sourceTypes = sourceTypes
-	}
-
-	for i := 0; i < len(b.patches); i++ {
-		p := b.patches[i]
-		fmt.Printf("%3d  %8s  %s  %d\n", p.index, p.name, p.sourceTypes, p.size)
+		fmt.Printf("%3d  %8s\n", i+1, p.common.name)
 	}
 }
