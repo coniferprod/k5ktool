@@ -28,8 +28,8 @@ gained a lot of popularity recently (2016-2018), and seemed to fit well
 to the task of reading a binary file and processing the information. This
 was my second serious attempt at Go, and I got a little further this time.
 I was starting to feel almost comfortable with the language constructs,
-even though there is a certain verbosity to Go that does not really feel
-too comfortable.
+even though there is a certain C-like terseness to Go that does not really feel too comfortable, as it results in lots of code lines. This is something
+that I really need to think about, as there are many things I like about Go.
 
 Apart from learning, my earlier language choices reflected the desire to
 run the application on both macOS and Windows, and possibly also Linux
