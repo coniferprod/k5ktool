@@ -1,0 +1,6 @@
+# Ignore extensionless files. See https://stackoverflow.com/a/19023985/1016326
+*
+!/**/
+!*.*
+.DS_Store
+
