@@ -18,12 +18,6 @@ var (
 		"<command> = one of list"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func init() {
 	flag.StringVar(&command, "c", "list", "Command - currently only 'list'")
 	flag.StringVar(&fileName, "f", "", "Name of Kawai K5000 bank file (.KAA)")
@@ -31,17 +25,26 @@ func init() {
 
 func main() {
 	flag.Parse()
+	// TODO: Check for missing file name
 	fmt.Fprintf(os.Stdout, "command = %v, fileName = %v\n", command, fileName)
 	switch command {
 	case "list":
 		fmt.Println("List patches in the bank")
 		data, err := ioutil.ReadFile(fileName) // read the whole file into memory
-		check(err)
+		if err != nil {
+			fmt.Printf("error opening %s: %s\n", fileName, err)
+			os.Exit(1)
+		}
 
+		// Now we should have contents of the whole file in `data`.
 		bd := readBankData(data)
+		//fmt.Printf("%v\n", bd)
+
+		println("whoop")
 
 		b := parsePatchData(bd)
 
+		println("whoop whoop")
 		listPatches(b)
 
 	default:
@@ -162,10 +165,10 @@ type sourceData struct {
 }
 
 type bankData struct {
-	patches     []patchData
+	patches     [numPatches]patchData
 	patchCount  int
 	data        [poolSize]byte
-	usedPatches []patchData
+	usedPatches [numPatches]patchData
 }
 
 type header struct {
@@ -176,24 +179,31 @@ type header struct {
 func readBankData(bs []byte) bankData {
 	buf := bytes.NewReader(bs)
 
-	var b bankData
+	var bd bankData
 
-	// Read the pointer table (128 * 7 pointers) and build list of used patches
+	patchMap := make(map[int]patchData)
+
+	// Read the pointer table (128 * 7 pointers) and build list of used patches.
+	// The tone pointers are 32-bit values with Big Endian byte ordering,
+	// so we need to specify that when reading.
 	patchCount := 0
 	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
 		var tonePtr int32
 		err := binary.Read(buf, binary.BigEndian, &tonePtr)
 		if err != nil {
-			fmt.Println("binary read failed:", err)
+			fmt.Println("binary read failed: ", err)
+			return bd
 		}
 		p := patchData{index: patchIndex, tonePtr: tonePtr, isUsed: tonePtr != 0, additiveKitCount: 0}
+		fmt.Printf("%03d: %08x\n", patchIndex, tonePtr)
 
 		// Pointers to ADD wave kits
 		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
 			var sourcePtr int32
 			err := binary.Read(buf, binary.BigEndian, &sourcePtr)
 			if err != nil {
-				fmt.Println("binary read failed:", err)
+				fmt.Println("binary read failed: ", err)
+				return bd
 			}
 
 			s := sourceData{additiveKitPtr: sourcePtr, isAdditive: sourcePtr != 0}
@@ -201,74 +211,89 @@ func readBankData(bs []byte) bankData {
 				p.additiveKitCount++
 			}
 			p.sources[sourceIndex] = s
-			//fmt.Printf("  %d: %08x\n", sourceIndex+1, sourcePtr)
+			fmt.Printf("  %d: %08x\n", sourceIndex+1, sourcePtr)
 		}
 
 		if p.isUsed {
-			b.usedPatches = append(b.patches, p)
+			//b.usedPatches[patchCount] = p
+			patchMap[patchCount] = p
 			patchCount++
 		}
+
+		fmt.Println()
 	}
+
+	usedPatches := []int{}
+	for key := range patchMap {
+		usedPatches = append(usedPatches, key)
+	}
+	fmt.Printf("Used patches: %v\n", usedPatches)
 
 	// Read the 'memory high water mark' pointer
 	var displacement int32
 	err := binary.Read(buf, binary.BigEndian, &displacement)
 	if err != nil {
-		fmt.Println("binary read failed:", err)
+		fmt.Println("binary read failed: ", err)
+		return bd
 	}
 	fmt.Printf("displacement = %08x\n", displacement)
 
-	b.patchCount = patchCount
+	bd.patchCount = patchCount
+	fmt.Printf("Bank has %d used patches\n", bd.patchCount)
 
 	// Read the data pool
 	var data [poolSize]byte
 	err = binary.Read(buf, binary.BigEndian, &data)
 	if err != nil {
-		fmt.Println("binary read failed:", err)
+		fmt.Println("binary read failed: ", err)
+		return bd
 	}
-	b.data = data
+	bd.data = data
 
 	// Adjust any non-zero tone pointers
 	tonePtrs := make([]int, 0)
-	for i := 0; i < len(b.patches); i++ {
-		ptr := int(b.patches[i].tonePtr)
-		if ptr == 0 {
-			fmt.Printf("tonePtr #%d == 0, not adding it\n", i+1)
-			continue
-		}
-		tonePtrs = append(tonePtrs, ptr)
+	for _, value := range patchMap {
+		tonePtrs = append(tonePtrs, int(value.tonePtr))
 	}
 	tonePtrs = append(tonePtrs, int(displacement))
-
 	sort.Ints(tonePtrs)
-	fmt.Printf("sorted: len = %d, cap = %d\n", len(tonePtrs), cap(tonePtrs))
 
 	base := tonePtrs[0]
 	fmt.Printf("base = %08x\n", base)
 
-	for i := 0; i < len(b.patches); i++ {
-		b.patches[i].tonePtr -= int32(base)
-		fmt.Printf("%03d: %08x\n", i+1, b.patches[i].tonePtr)
-		for j := 0; j < len(b.patches[i].sources); j++ {
-			if b.patches[i].sources[j].isAdditive {
-				b.patches[i].sources[j].additiveKitPtr -= int32(base)
+	for _, value := range patchMap {
+		value.tonePtr -= int32(base)
+
+		for s := 0; s < len(value.sources); s++ {
+			if value.sources[s].isAdditive {
+				value.sources[s].additiveKitPtr -= int32(base)
 			}
-			fmt.Printf("  %d: %08x\n", j+1, b.patches[i].sources[j].additiveKitPtr)
 		}
 	}
 
 	displacement -= int32(base)
 	fmt.Printf("adjusted displacement = %08x\n", displacement)
 
-	return b
+	for i := 0; i < numPatches; i++ {
+		p, ok := patchMap[i]
+		if ok {
+			bd.patches[i] = p
+		}
+	}
+
+	return bd
 }
 
 func parsePatchData(bd bankData) bank {
 	var b bank
 
 	for i := 0; i < numPatches; i++ {
+		if !bd.patches[i].isUsed {
+			continue
+		}
 		dataStart := i * 1024
 		dataEnd := dataStart + 1024
+		fmt.Printf("%03d: start=%08x end=%08x\n", i, dataStart, dataEnd)
 		d := bd.data[dataStart:dataEnd]
 		c := commonData{algorithm: effectAlgorithm(d[0]), reverb: reverbType(d[1])}
 

@@ -1,5 +1,22 @@
 # Adapted from https://github.com/dotnet/core/blob/master/.gitignore
 
+# Go
+# Ignore tool dependencies of Visual Studio Code
+src/golang.org/x/
+src/github.com/
+src/github.com/acroca/
+src/github.com/go-delve/
+src/github.com/mdempsky/
+src/github.com/rogpeppe/
+src/github.com/uudashr/
+src/github.com/ianthehat/
+src/github.com/pkg/
+src/github.com/sqs/
+src/github.com/derekparker/
+src/github.com/karrick/
+src/github.com/ramya-rao-a/
+src/github.com/stamblerre/
+
 # Swift Package Manager (see https://github.com/github/gitignore/blob/master/Swift.gitignore)
 Packages/
 Package.pins
