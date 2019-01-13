@@ -20,8 +20,6 @@ let bankFileURL = playgroundSharedDataDirectory.appendingPathComponent("WIZOO.KA
 
 let data = try Data(contentsOf: bankFileURL)
 
-let tonePointers = [UInt32]()
-
 enum Bank {
     static let maxPatchCount = 128
     static let maxSourceCount = 6
@@ -39,6 +37,14 @@ extension FixedWidthInteger {
 }
 
 typealias TonePointer = UInt32
+
+struct PatchPointer {
+    var index: Int
+    var tonePointer: TonePointer
+    var sourcePointers: [TonePointer]
+}
+
+var patches = [PatchPointer]()
 
 var offset = 0
 var patchCount = 0
@@ -59,6 +65,8 @@ while patchCount < Bank.maxPatchCount {
     print("  " + sourcePointers.compactMap { String(format: "%08X", $0) }.joined(separator: " "))
     print()
     patchCount += 1
+    
+    patches.append(PatchPointer(index: patchCount, tonePointer: tonePointer.bigEndian, sourcePointers: sourcePointers))
 }
 
 let highMemoryPointer: TonePointer = data.scanValue(start: offset, length: pointerWidth)
@@ -66,3 +74,42 @@ print(String(format: "high memory pointer = %08X", highMemoryPointer.bigEndian))
 offset += pointerWidth
 
 let dataPool = data.subdata(in: offset..<offset+Bank.poolSize)
+
+// Collect the non-zero tone pointers and the high memory pointer
+var tonePointers = patches.map { $0.tonePointer }.filter { $0 != 0 }
+
+// Find out which of the non-zero pointers is lowest
+let base = tonePointers.sorted()[0]
+print(String(format: "base = %08X", base))
+
+print("patch count = \(patches.count)")
+
+// Adjust every pointer down by the base amount
+var adjustedPatches = [PatchPointer]()
+
+var patchIndex = 0
+for patch in patches {
+    var adjustedTonePointer = patch.tonePointer
+    if patch.tonePointer != 0 {
+        adjustedTonePointer -= base
+    }
+    
+    var adjustedSourcePointers = [TonePointer]()
+    for sourcePointer in patch.sourcePointers {
+        var adjustedSourcePointer = sourcePointer
+        if sourcePointer != 0 {
+            adjustedSourcePointer -= base
+        }
+        adjustedSourcePointers.append(adjustedSourcePointer)
+    }
+
+    let adjustedPatch = PatchPointer(index: patchIndex, tonePointer: adjustedTonePointer, sourcePointers: adjustedSourcePointers)
+    adjustedPatches.append(adjustedPatch)
+    patchIndex += 1
+}
+
+for p in adjustedPatches {
+    print(String(format: "%03d - %08X", p.index, p.tonePointer))
+    print("  " + p.sourcePointers.compactMap { String(format: "%08X", $0) }.joined(separator: " "))
+}
+
