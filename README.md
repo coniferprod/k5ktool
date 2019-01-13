@@ -6,7 +6,7 @@ Advanced Additive Synthesizer (1996).
 
 _(work in progress)_
 
-Requires Python 3.6 or later.
+Requires Swift 4.2 or later.
 
 ## Programming languages
 
@@ -34,7 +34,7 @@ that I really need to think about, as there are many things I like about Go.
 Apart from learning, my earlier language choices reflected the desire to
 run the application on both macOS and Windows, and possibly also Linux
 (on the Raspberry Pi). This ruled out Swift, which would have been my
-first choice in other circumsances. However, as I was writing an iOS 
+first choice in other circumstances. However, as I was writing an iOS 
 application in Swift at the same time, it suddently struck me: maybe it
 is not so important to be able to run this on many platforms, after all.
 What if I just used Swift and got it over with. I would end up with a 
@@ -42,16 +42,11 @@ command-line utility for macOS (or, in a pinch, Linux), but I don't think
 I care that much, since I will be making most use of it on the Mac anyway.
 
 So, the fourth (and hopefully final) language for this utility is Swift, 
-version 4.2. The learning purpose has been fulfilled; I am now better
-versed in C#, Python and Go than when I started.
+version 4.2, developed in Xcode 10. The learning purpose has been 
+fulfilled; I am now better versed in C#, Python and Go than when I started.
 
 For the Swift version I have been heavily influenced by John Sundell's
 article [Building a command line tool using the Swift Package Manager](https://www.swiftbysundell.com/posts/building-a-command-line-tool-using-the-swift-package-manager).
-
-## Usage (Python)
-
-Create a Python virtual environment with `python3 -mvenv venv` and activate it
-with `source venv/bin/activate`. Then run the program with `python3 k5ktool.py cmd [options]`.
 
 ## The KAA and KA1 file formats
 
