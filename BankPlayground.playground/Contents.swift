@@ -29,6 +29,10 @@ enum Bank {
     static let sourceDataSize = 86
     static let sourceCountOffset = 51
     static let additiveWaveKitSize = 806
+    
+    static let commonChecksumOffset = 0
+    static let effectAlgorithmOffset = 1
+    static let reverbTypeOffset = 2
     static let nameOffset = 40
     static let nameSize = 8
     static let volumeOffset = 48
@@ -37,6 +41,23 @@ enum Bank {
     static let effect2Offset = 14
     static let effect3Offset = 20
     static let effect4Offset = 26
+    static let maxEffects = 4
+    static let GEQOffset = 32
+}
+
+let reverbNames = ["Hall 1", "Hall 2", "Hall 3", "Room 1", "Room 2", "Room 3", "Plate 1", "Plate 2", "Plate 3", "Reverse", "Long Delay"]
+
+struct Reverb {
+    let type: Int  // 0...10
+    let dryWet: Int
+    let param1: Int
+    let param2: Int
+    let param3: Int
+    let param4: Int
+    
+    var description: String {
+        return "\(reverbNames[type]): dry/wet = \(dryWet), param1 = \(param1), param2 = \(param2), param3 = \(param3), param4 = \(param4)"
+    }
 }
 
 // There seems to be a conflict in the manual: there are 37 effect names,
@@ -53,10 +74,29 @@ struct Effect {
     let param4: Int
     
     var description: String {
-        let effectIndex = type - 11  // effects are numbered from 11 to 47
+        print("effect type = \(type)")
+        // Hmm, seems like some patches have the effect type value of zero,
+        // even when it is illegal (should be 11...47)
+        let effectIndex = type == 0 ? type : type - 11  // effects are numbered from 11 to 47
+        
         return "\(effectNames[effectIndex]): depth = \(depth), param1 = \(param1), param2 = \(param2), param3 = \(param3), param4 = \(param4)"
     }
 }
+
+struct GEQ {
+    let freq1: Int
+    let freq2: Int
+    let freq3: Int
+    let freq4: Int
+    let freq5: Int
+    let freq6: Int
+    let freq7: Int
+    
+    var description: String {
+        return "\(freq1) \(freq2) \(freq3) \(freq4) \(freq5) \(freq6) \(freq7)"
+    }
+}
+
 
 // https://stackoverflow.com/a/47221437/1016326
 extension FixedWidthInteger {
@@ -201,6 +241,7 @@ for (index, patch) in adjustedPatches.enumerated() {
     let dataSize = Bank.commonDataSize + Bank.sourceDataSize * Int(sourceCount) + Bank.additiveWaveKitSize * patch.additiveWaveKitCount
     let dataEnd = dataStart + dataSize
     let data = dataPool.subdata(in: dataStart..<dataEnd)
+    print("patch data size = \(data.count)")
     
     let nameStart = Bank.nameOffset
     let nameEnd = nameStart + Bank.nameSize
@@ -211,12 +252,34 @@ for (index, patch) in adjustedPatches.enumerated() {
     let volume = getByteAsInt(data: data, start: Bank.volumeOffset)
     let polyRaw = getByteAsInt(data: data, start: Bank.polyOffset)
     let poly = Polyphony(rawValue: polyRaw)
-    let effect1 = getEffect(number: 1, data: data)
-    let effect2 = getEffect(number: 2, data: data)
-    let effect3 = getEffect(number: 3, data: data)
-    let effect4 = getEffect(number: 4, data: data)
+    print(String(format: "%03d", index), "\(name), volume = \(volume), poly = \(poly!.description), sources = \(sourceCount)")
 
-    print(String(format: "%03d", index), "\(name), volume = \(volume), poly = \(poly!.description)\nEffect1 = \(effect1.description)\nEffect2 = \(effect2.description)\nEffect3 = \(effect3.description)\nEffect4 = \(effect4.description)")
+    let effectAlgorithm = getByteAsInt(data: data, start: Bank.effectAlgorithmOffset)
+    print("Effect algorithm = \(effectAlgorithm + 1)")
+
+    let reverb = Reverb(
+        type: getByteAsInt(data: data, start: Bank.reverbTypeOffset),
+        dryWet: getByteAsInt(data: data, start: Bank.reverbTypeOffset + 1),
+        param1: getByteAsInt(data: data, start: Bank.reverbTypeOffset + 2),
+        param2: getByteAsInt(data: data, start: Bank.reverbTypeOffset + 3),
+        param3: getByteAsInt(data: data, start: Bank.reverbTypeOffset + 4),
+        param4: getByteAsInt(data: data, start: Bank.reverbTypeOffset + 5))
+    print("Reverb: \(reverb.description)")
+
+    for effectNumber in 1...Bank.maxEffects {
+        let effect = getEffect(number: effectNumber, data: data)
+        print("effect #\(effectNumber) = \(effect.description)")
+    }
+    
+    let geq = GEQ(
+        freq1: getByteAsInt(data: data, start: Bank.GEQOffset) - 64,
+        freq2: getByteAsInt(data: data, start: Bank.GEQOffset + 1) - 64,
+        freq3: getByteAsInt(data: data, start: Bank.GEQOffset + 2) - 64,
+        freq4: getByteAsInt(data: data, start: Bank.GEQOffset + 3) - 64,
+        freq5: getByteAsInt(data: data, start: Bank.GEQOffset + 4) - 64,
+        freq6: getByteAsInt(data: data, start: Bank.GEQOffset + 5) - 64,
+        freq7: getByteAsInt(data: data, start: Bank.GEQOffset + 6) - 64)
+    print("GEQ = \(geq.description)")
     print("")
 }
 
