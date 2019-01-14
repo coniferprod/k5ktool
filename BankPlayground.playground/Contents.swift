@@ -17,7 +17,7 @@ extension Data {
     }
 }
 
-let bankFileURL = playgroundSharedDataDirectory.appendingPathComponent("WIZOO.KAA")
+let bankFileURL = playgroundSharedDataDirectory.appendingPathComponent("EAJ-#01.KAA")
 
 let data = try Data(contentsOf: bankFileURL)
 
@@ -31,6 +31,31 @@ enum Bank {
     static let additiveWaveKitSize = 806
     static let nameOffset = 40
     static let nameSize = 8
+    static let volumeOffset = 48
+    static let polyOffset = 49
+    static let effect1Offset = 8
+    static let effect2Offset = 14
+    static let effect3Offset = 20
+    static let effect4Offset = 26
+}
+
+// There seems to be a conflict in the manual: there are 37 effect names,
+// but the number of effects is reported to be 36. Cross-check this with
+// the actual synth.
+let effectNames = ["Early Reflection 1", "Early Reflection 2", "Tap Delay 1", "Tap Delay 2", "Single Delay", "Dual Delay", "Stereo Delay", "Cross Delay", "Auto Pan", "Auto Pan & Delay", "Chorus 1", "Chorus 2", "Chorus 1 & Delay", "Chorus 2 & Delay", "Flanger 1", "Flanger 2", "Flanger 1 & Delay", "Flanger 2 & Delay", "Ensemble", "Ensemble & Delay", "Celeste", "Celeste & Delay", "Tremolo", "Tremolo & Delay", "Phaser 1", "Phaser 2", "Phaser 1 & Delay", "Phaser 2 & Delay", "Rotary", "Autowah", "Bandpass", "Exciter", "Enhancer", "Overdrive", "Distortion", "Overdrive & Delay", "Distortion & Delay"]
+
+struct Effect {
+    let type: Int
+    let depth: Int
+    let param1: Int
+    let param2: Int
+    let param3: Int
+    let param4: Int
+    
+    var description: String {
+        let effectIndex = type - 11  // effects are numbered from 11 to 47
+        return "\(effectNames[effectIndex]): depth = \(depth), param1 = \(param1), param2 = \(param2), param3 = \(param3), param4 = \(param4)"
+    }
 }
 
 // https://stackoverflow.com/a/47221437/1016326
@@ -128,6 +153,43 @@ for patch in patches {
 // Now we have all the adjusted data pointers, so we can start picking up
 // chunks of data from the big pool based on them.
 
+enum Polyphony: Int {
+    case poly = 0
+    case solo1 = 1
+    case solo2 = 2
+    
+    var description: String {
+        let names = ["POLY1", "SOLO1", "SOLO2"]
+        return names[self.rawValue]
+    }
+}
+
+
+
+func getByteAsInt(data: Data, start: Int) -> Int {
+    let rawValue: UInt8 = data.scanValue(start: start, length: UInt8.byteWidth)
+    return Int(rawValue)
+}
+
+func getEffect(number: Int, data: Data) -> Effect {
+    var start = 0
+    switch number {
+    case 1: start = Bank.effect1Offset
+    case 2: start = Bank.effect2Offset
+    case 3: start = Bank.effect3Offset
+    case 4: start = Bank.effect4Offset
+    default: start = 0
+    }
+    
+    return Effect(
+        type: getByteAsInt(data: data, start: start),
+        depth: getByteAsInt(data: data, start: start + 1),
+        param1: getByteAsInt(data: data, start: start + 2),
+        param2: getByteAsInt(data: data, start: start + 3),
+        param3: getByteAsInt(data: data, start: start + 4),
+        param4: getByteAsInt(data: data, start: start + 5))
+}
+
 for (index, patch) in adjustedPatches.enumerated() {
     /*
     print(String(format: "%03d - %08X", p.index, p.tonePointer))
@@ -144,19 +206,17 @@ for (index, patch) in adjustedPatches.enumerated() {
     let nameEnd = nameStart + Bank.nameSize
     let nameData = data.subdata(in: nameStart..<nameEnd)
 
-    var name = ""
-    // ASCII is probably the closest encoding
-    if let nameString = String(bytes: nameData, encoding: .ascii) {
-        // Copy the characters except the NUL bytes
-        for ch in nameString {
-            if ch != "\0" {
-                name.append(ch)
-            }
-        }
-    }
-    //print(String(format: "%03d %s", index, name))
-    print(index, name)
+    let name = String(data: nameData, encoding: .utf8) ?? ""
     
-    
+    let volume = getByteAsInt(data: data, start: Bank.volumeOffset)
+    let polyRaw = getByteAsInt(data: data, start: Bank.polyOffset)
+    let poly = Polyphony(rawValue: polyRaw)
+    let effect1 = getEffect(number: 1, data: data)
+    let effect2 = getEffect(number: 2, data: data)
+    let effect3 = getEffect(number: 3, data: data)
+    let effect4 = getEffect(number: 4, data: data)
+
+    print(String(format: "%03d", index), "\(name), volume = \(volume), poly = \(poly!.description)\nEffect1 = \(effect1.description)\nEffect2 = \(effect2.description)\nEffect3 = \(effect3.description)\nEffect4 = \(effect4.description)")
+    print("")
 }
 

@@ -24,6 +24,7 @@ Package.resolved
 .build/
 # The generated Xcode project should not be versioned. Use `swift package generate-xcodeproj` to regenerate.
 *.xcodeproj/
+BankPlayground.playground/playground.xcworkspace/
 
 *.swp
 *.*~
