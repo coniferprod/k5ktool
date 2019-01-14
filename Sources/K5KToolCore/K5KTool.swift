@@ -114,6 +114,24 @@ struct BankData {
     
     var dataPool: [Byte]
     
+    typealias TonePointer = UInt32
+    
+    struct PatchPointer {
+        var index: Int
+        var tonePointer: TonePointer
+        var sourcePointers: [TonePointer]
+        
+        var additiveWaveKitCount: Int {
+            // The source pointer for any additive wave kit is non-zero.
+            // See https://www.hackingwithswift.com/example-code/language/how-to-count-matching-items-in-an-array
+            return sourcePointers.filter { $0 != 0 }.count
+        }
+        
+        func isAdditive(sourceIndex: Int) -> Bool {
+            return sourcePointers[sourceIndex] != 0
+        }
+    }
+    
     static func parse(from data: Data) -> Bank {
         func getEffect(number: Int, data: Data) -> Effect {
             var start = 0
@@ -196,14 +214,14 @@ struct BankData {
         
         var patches = [Patch]()
         
-        for (index, ptr) in adjustedPatchPointers.enumerated() {
-            let dataStart = Int(ptr.tonePointer)
+        for (_, pp) in adjustedPatchPointers.enumerated() {
+            let dataStart = Int(pp.tonePointer)
             let sourceCount = data.getByteAsInt(start: dataStart + sourceCountOffset)
-            let dataSize = commonDataSize + sourceDataSize * sourceCount + additiveWaveKitSize * ptr.additiveWaveKitCount
+            let dataSize = commonDataSize + sourceDataSize * sourceCount + additiveWaveKitSize * pp.additiveWaveKitCount
             let dataEnd = dataStart + dataSize
             let data = dataPool.subdata(in: dataStart..<dataEnd)
             
-            let nameStart = dataStart + nameOffset
+            let nameStart = nameOffset
             let nameEnd = nameStart + nameSize
             let nameData = data.subdata(in: nameStart..<nameEnd)
             
@@ -247,7 +265,6 @@ struct BankData {
     }
 }
 
-
 // From https://stackoverflow.com/a/47221437/1016326
 extension FixedWidthInteger {
     var byteWidth: Int {
@@ -257,25 +274,6 @@ extension FixedWidthInteger {
         return Self.bitWidth / UInt8.bitWidth
     }
 }
-
-typealias TonePointer = UInt32
-
-struct PatchPointer {
-    var index: Int
-    var tonePointer: TonePointer
-    var sourcePointers: [TonePointer]
-    
-    var additiveWaveKitCount: Int {
-        // The source pointer for any additive wave kit is non-zero.
-        // See https://www.hackingwithswift.com/example-code/language/how-to-count-matching-items-in-an-array
-        return sourcePointers.filter { $0 != 0 }.count
-    }
-    
-    func isAdditive(sourceIndex: Int) -> Bool {
-        return sourcePointers[sourceIndex] != 0
-    }
-}
-
 
 public final class K5KTool {
     private let arguments: [String]
