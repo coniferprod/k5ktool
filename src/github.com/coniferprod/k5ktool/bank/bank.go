@@ -1,6 +1,14 @@
 // Package bank contains type definitions and utility functions for a sound bank.
 package bank
 
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"os"
+	"sort"
+)
+
 const (
 	// NumPatches is the number of patches in a sound bank.
 	NumPatches = 128
@@ -89,4 +97,140 @@ type Patch struct {
 // Bank contains 128 patches.
 type Bank struct {
 	Patches [NumPatches]Patch
+}
+
+const (
+	numPatches          = 128
+	wordSize            = 4
+	numSources          = 6
+	poolSize            = 0x20000
+	commonDataSize      = 82
+	sourceDataSize      = 86
+	additiveWaveKitSize = 806
+	nameSize            = 8
+	sourceCountOffset   = 51
+	nameOffset          = 40
+	numGEQBands         = 7
+	numEffects          = 4
+
+	commonChecksumOffset  = 0
+	effectAlgorithmOffset = 1
+	volumeOffset          = 48
+	polyphonyOffset       = 49
+)
+
+type patchPtr struct {
+	index      int
+	tonePtr    int32
+	sourcePtrs [numSources]int32
+}
+
+func (pp patchPtr) additiveWaveKitCount() int {
+	count := 0
+	for i := 0; i < numSources; i++ {
+		if pp.sourcePtrs[i] != 0 {
+			count++
+		}
+	}
+	return count
+}
+
+// Parse parses the bank data into a structure.
+func Parse(bs []byte) Bank {
+	buf := bytes.NewReader(bs)
+
+	var err error
+
+	// Read the pointer table (128 * 7 pointers). They are 32-bit integers
+	// with Big Endian byte ordering, so we need to specify that when reading.
+	var patchPtrs [numPatches]patchPtr
+	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
+		var tonePtr int32
+		err = binary.Read(buf, binary.BigEndian, &tonePtr)
+		if err != nil {
+			fmt.Println("binary read failed: ", err)
+			os.Exit(1)
+		}
+
+		var sourcePtrs [numSources]int32
+		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
+			var sourcePtr int32
+			err = binary.Read(buf, binary.BigEndian, &sourcePtr)
+			if err != nil {
+				fmt.Println("binary read failed: ", err)
+				os.Exit(1)
+			}
+
+			sourcePtrs[sourceIndex] = sourcePtr
+		}
+
+		patchPtrs[patchIndex] = patchPtr{index: patchIndex, tonePtr: tonePtr, sourcePtrs: sourcePtrs}
+	}
+
+	// Read the 'memory high water mark' pointer
+	var highMemPtr int32
+	err = binary.Read(buf, binary.BigEndian, &highMemPtr)
+	if err != nil {
+		fmt.Println("binary read failed: ", err)
+		os.Exit(1)
+	}
+
+	// Read the data pool
+	var data [poolSize]byte
+	err = binary.Read(buf, binary.BigEndian, &data)
+	if err != nil {
+		fmt.Println("binary read failed: ", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Adjusting pointers")
+	// Adjust any non-zero tone pointers.
+	// Must treat tone pointers as int since there is no sort.Int32s.
+	tonePtrs := make([]int, 0)
+	for i := 0; i < numPatches; i++ {
+		if patchPtrs[i].tonePtr != 0 {
+			tonePtrs = append(tonePtrs, int(patchPtrs[i].tonePtr))
+		}
+	}
+
+	tonePtrs = append(tonePtrs, int(highMemPtr))
+	sort.Ints(tonePtrs)
+	base := tonePtrs[0]
+
+	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
+		if patchPtrs[patchIndex].tonePtr != 0 {
+			patchPtrs[patchIndex].tonePtr -= int32(base)
+		}
+
+		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
+			if patchPtrs[patchIndex].sourcePtrs[sourceIndex] != 0 {
+				patchPtrs[patchIndex].sourcePtrs[sourceIndex] -= int32(base)
+			}
+		}
+	}
+
+	// Now we have all the adjusted data pointers, so we can start picking up
+	// chunks of data from the big pool based on them.
+
+	b := Bank{}
+
+	for _, pp := range patchPtrs {
+		dataStart := int(pp.tonePtr)
+		sourceCount := int(data[dataStart+sourceCountOffset])
+		dataSize := commonDataSize + sourceDataSize*sourceCount + additiveWaveKitSize*pp.additiveWaveKitCount()
+		dataEnd := dataStart + dataSize
+		d := data[dataStart:dataEnd]
+
+		nameStart := nameOffset
+		nameEnd := nameStart + nameSize
+		nameData := d[nameStart:nameEnd]
+		name := string(bytes.TrimRight(nameData, "\x00"))
+
+		c := Common{Name: name, SourceCount: sourceCount}
+
+		patch := Patch{Common: c}
+		b.Patches[pp.index] = patch
+	}
+
+	return b
 }
