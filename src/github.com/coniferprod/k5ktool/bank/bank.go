@@ -63,6 +63,11 @@ type Effect struct {
 	Param4 int
 }
 
+var effectNames = []string{"Early Reflection 1", "Early Reflection 2", "Tap Delay 1", "Tap Delay 2", "Single Delay", "Dual Delay", "Stereo Delay", "Cross Delay", "Auto Pan", "Auto Pan & Delay", "Chorus 1", "Chorus 2", "Chorus 1 & Delay", "Chorus 2 & Delay", "Flanger 1", "Flanger 2", "Flanger 1 & Delay", "Flanger 2 & Delay", "Ensemble", "Ensemble & Delay", "Celeste", "Celeste & Delay", "Tremolo", "Tremolo & Delay", "Phaser 1", "Phaser 2", "Phaser 1 & Delay", "Phaser 2 & Delay", "Rotary", "Autowah", "Bandpass", "Exciter", "Enhancer", "Overdrive", "Distortion", "Overdrive & Delay", "Distortion & Delay"}
+
+// There seems to be a conflict in the manual: there are 37 effect names, but the number of effects is reported to be 36.
+// Cross-check this with the actual synth.
+
 // GEQ stores the graphical EQ settings of a patch.
 type GEQ struct {
 	Freq1 int
@@ -100,8 +105,6 @@ type Bank struct {
 }
 
 const (
-	numPatches          = 128
-	wordSize            = 4
 	numSources          = 6
 	poolSize            = 0x20000
 	commonDataSize      = 82
@@ -143,8 +146,8 @@ func Parse(bs []byte) Bank {
 
 	// Read the pointer table (128 * 7 pointers). They are 32-bit integers
 	// with Big Endian byte ordering, so we need to specify that when reading.
-	var patchPtrs [numPatches]patchPtr
-	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
+	var patchPtrs [NumPatches]patchPtr
+	for patchIndex := 0; patchIndex < NumPatches; patchIndex++ {
 		var tonePtr int32
 		err = binary.Read(buf, binary.BigEndian, &tonePtr)
 		if err != nil {
@@ -183,11 +186,10 @@ func Parse(bs []byte) Bank {
 		os.Exit(1)
 	}
 
-	fmt.Println("Adjusting pointers")
 	// Adjust any non-zero tone pointers.
 	// Must treat tone pointers as int since there is no sort.Int32s.
 	tonePtrs := make([]int, 0)
-	for i := 0; i < numPatches; i++ {
+	for i := 0; i < NumPatches; i++ {
 		if patchPtrs[i].tonePtr != 0 {
 			tonePtrs = append(tonePtrs, int(patchPtrs[i].tonePtr))
 		}
@@ -197,7 +199,7 @@ func Parse(bs []byte) Bank {
 	sort.Ints(tonePtrs)
 	base := tonePtrs[0]
 
-	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
+	for patchIndex := 0; patchIndex < NumPatches; patchIndex++ {
 		if patchPtrs[patchIndex].tonePtr != 0 {
 			patchPtrs[patchIndex].tonePtr -= int32(base)
 		}
