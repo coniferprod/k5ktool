@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+
+	"github.com/coniferprod/k5ktool/bank"
 )
 
 var (
@@ -150,10 +152,6 @@ type commonData struct {
 
 }
 
-type bank struct {
-	patches [numPatches]patch
-}
-
 type patch struct {
 	common commonData
 }
@@ -164,11 +162,97 @@ type sourceData struct {
 	data           [sourceDataSize]byte
 }
 
+type patchPtr struct {
+	index      int
+	tonePtr    int32
+	sourcePtrs [numSources]int32
+}
+
 type bankData struct {
 	patches     [numPatches]patchData
 	patchCount  int
 	data        [poolSize]byte
 	usedPatches [numPatches]patchData
+}
+
+func (bd bankData) parse(bs []byte) bank.Bank {
+	buf := bytes.NewReader(bs)
+
+	var err error
+
+	// Read the pointer table (128 * 7 pointers). They are 32-bit integers
+	// with Big Endian byte ordering, so we need to specify that when reading.
+	var patchPtrs [numPatches]patchPtr
+	patchCount := 0
+	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
+		var tonePtr int32
+		err = binary.Read(buf, binary.BigEndian, &tonePtr)
+		if err != nil {
+			fmt.Println("binary read failed: ", err)
+			os.Exit(1)
+		}
+
+		var sourcePtrs [numSources]int32
+		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
+			var sourcePtr int32
+			err = binary.Read(buf, binary.BigEndian, &sourcePtr)
+			if err != nil {
+				fmt.Println("binary read failed: ", err)
+				os.Exit(1)
+			}
+
+			sourcePtrs[sourceIndex] = sourcePtr
+
+		}
+
+		patchPtrs[patchIndex] = patchPtr{index: patchIndex, tonePtr: tonePtr, sourcePtrs: sourcePtrs}
+	}
+
+	// Read the 'memory high water mark' pointer
+	var highMemPtr int32
+	err = binary.Read(buf, binary.BigEndian, &highMemPtr)
+	if err != nil {
+		fmt.Println("binary read failed: ", err)
+		os.Exit(1)
+	}
+
+	// Read the data pool
+	var data [poolSize]byte
+	err = binary.Read(buf, binary.BigEndian, &data)
+	if err != nil {
+		fmt.Println("binary read failed: ", err)
+		os.Exit(1)
+	}
+	bd.data = data
+
+	// Adjust any non-zero tone pointers.
+	// Must treat tone pointers as int since there is no sort.Int32s.
+	tonePtrs := make([]int, 0)
+	for i := 0; i < numPatches; i++ {
+		if patchPtrs[i].tonePtr != 0 {
+			tonePtrs = append(tonePtrs, patchPtrs[i].tonePtr)
+		}
+	}
+
+	tonePtrs = append(tonePtrs, int(highMemPtr))
+	sort.Ints(tonePtrs)
+	base := tonePtrs[0]
+
+	for patchIndex := 0; patchIndex < numPatches; patchIndex++ {
+		if patchPtrs[patchIndex].tonePtr != 0 {
+			patchPtrs[patchIndex].tonePtr -= int32(base)
+		}
+
+		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
+			if patchPtrs[patchIndex].sourcePointers[sourceIndex] != 0 {
+				patchPtrs[patchIndex].sourcePointers[sourceIndex] -= base
+			}
+		}
+	}
+
+	// Now we have all the adjusted data pointers, so we can start picking up
+	// chunks of data from the big pool based on them.
+
 }
 
 type header struct {
