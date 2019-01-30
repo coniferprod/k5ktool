@@ -1,6 +1,8 @@
 # Adapted from https://github.com/dotnet/core/blob/master/.gitignore
 
 # Go
+pkg/
+
 # Ignore tool dependencies of Visual Studio Code
 src/golang.org/x/
 src/github.com/
