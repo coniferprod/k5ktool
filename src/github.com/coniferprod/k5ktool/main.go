@@ -82,6 +82,36 @@ func listPatches(b bank.Bank) {
 			p.Common.Effect1.EffectParam2,
 			p.Common.Effect1.EffectParam3,
 			p.Common.Effect1.EffectParam3)
+		fmt.Printf("effect 2: %s, depth = %d, param1 = %d, param2 = %d, param3 = %d, param4 = %d\n",
+			p.Common.Effect2.Description(),
+			p.Common.Effect2.EffectDepth,
+			p.Common.Effect2.EffectParam1,
+			p.Common.Effect2.EffectParam2,
+			p.Common.Effect2.EffectParam3,
+			p.Common.Effect2.EffectParam3)
+		fmt.Printf("effect 3: %s, depth = %d, param1 = %d, param2 = %d, param3 = %d, param4 = %d\n",
+			p.Common.Effect3.Description(),
+			p.Common.Effect3.EffectDepth,
+			p.Common.Effect3.EffectParam1,
+			p.Common.Effect3.EffectParam2,
+			p.Common.Effect3.EffectParam3,
+			p.Common.Effect3.EffectParam3)
+		fmt.Printf("effect 4: %s, depth = %d, param1 = %d, param2 = %d, param3 = %d, param4 = %d\n",
+			p.Common.Effect4.Description(),
+			p.Common.Effect4.EffectDepth,
+			p.Common.Effect4.EffectParam1,
+			p.Common.Effect4.EffectParam2,
+			p.Common.Effect4.EffectParam3,
+			p.Common.Effect4.EffectParam3)
+		fmt.Printf("GEQ: %d %d %d %d %d %d %d\n",
+			p.Common.GEQ.Freq1,
+			p.Common.GEQ.Freq2,
+			p.Common.GEQ.Freq3,
+			p.Common.GEQ.Freq4,
+			p.Common.GEQ.Freq5,
+			p.Common.GEQ.Freq6,
+			p.Common.GEQ.Freq7)
+
 		fmt.Println()
 	}
 }

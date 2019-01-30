@@ -139,6 +139,27 @@ func (e Effect) Description() string {
 	return s
 }
 
+func getEffect(data []byte) Effect {
+	effectType := 0
+	if data[0] != 0 {
+		effectType = int(data[0]) - 11
+	}
+	depth := int(data[1])
+	param1 := int(data[2])
+	param2 := int(data[3])
+	param3 := int(data[4])
+	param4 := int(data[5])
+
+	return Effect{
+		EffectType:   effectType,
+		EffectDepth:  depth,
+		EffectParam1: param1,
+		EffectParam2: param2,
+		EffectParam3: param3,
+		EffectParam4: param4,
+	}
+}
+
 // GEQ stores the graphical EQ settings of a patch.
 type GEQ struct {
 	Freq1 int
@@ -200,6 +221,7 @@ const (
 	effect2Offset         = 14
 	effect3Offset         = 20
 	effect4Offset         = 26
+	gEQOffset             = 32
 )
 
 type patchPtr struct {
@@ -319,13 +341,20 @@ func ParseBankFile(bs []byte) Bank {
 		reverbParam3 := int(d[reverbOffset+4])
 		reverbParam4 := int(d[reverbOffset+5])
 
-		effect1Type := int(d[effect1Offset]) - 11
-		//fmt.Printf("effect 1 type = %d\n", effect1Type)
-		effect1Depth := int(d[effect1Offset+1])
-		effect1Param1 := int(d[effect1Offset+2])
-		effect1Param2 := int(d[effect1Offset+3])
-		effect1Param3 := int(d[effect1Offset+4])
-		effect1Param4 := int(d[effect1Offset+5])
+		effect1 := getEffect(d[effect1Offset : effect1Offset+6])
+		effect2 := getEffect(d[effect2Offset : effect2Offset+6])
+		effect3 := getEffect(d[effect3Offset : effect3Offset+6])
+		effect4 := getEffect(d[effect4Offset : effect4Offset+6])
+
+		geq := GEQ{
+			Freq1: int(d[gEQOffset] - 64),
+			Freq2: int(d[gEQOffset+1] - 64),
+			Freq3: int(d[gEQOffset+2] - 64),
+			Freq4: int(d[gEQOffset+3] - 64),
+			Freq5: int(d[gEQOffset+4] - 64),
+			Freq6: int(d[gEQOffset+5] - 64),
+			Freq7: int(d[gEQOffset+6] - 64),
+		}
 
 		// With struct embedding, the literal must follow the shape of the type declaration. (TGPL, p. 106)
 		c := Common{
@@ -339,17 +368,14 @@ func ParseBankFile(bs []byte) Bank {
 				ReverbParam3: reverbParam3,
 				ReverbParam4: reverbParam4,
 			},
-			Effect1: Effect{
-				EffectType:   effect1Type,
-				EffectDepth:  effect1Depth,
-				EffectParam1: effect1Param1,
-				EffectParam2: effect1Param2,
-				EffectParam3: effect1Param3,
-				EffectParam4: effect1Param4,
-			},
+			Effect1:         effect1,
+			Effect2:         effect2,
+			Effect3:         effect3,
+			Effect4:         effect4,
 			Volume:          volume,
 			Polyphony:       polyphony,
 			EffectAlgorithm: effectAlgorithm,
+			GEQ:             geq,
 		}
 
 		patch := Patch{Common: c}
