@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/coniferprod/k5ktool/bank"
 )
@@ -19,13 +21,15 @@ var (
 
 func init() {
 	flag.StringVar(&command, "c", "list", "Command - currently only 'list'")
-	flag.StringVar(&fileName, "f", "", "Name of Kawai K5000 bank file (.KAA)")
+	flag.StringVar(&fileName, "f", "", "Name of Kawai K5000 bank file (.kaa) or System Exclusive file (.syx)")
 }
 
 func main() {
 	flag.Parse()
 	// TODO: Check for missing file name argument
-	fmt.Fprintf(os.Stdout, "command = %v, fileName = %v\n", command, fileName)
+	extension := strings.ToLower(filepath.Ext(fileName))
+
+	fmt.Fprintf(os.Stdout, "command = %v, fileName = %v, extension = %v\n", command, fileName, extension)
 	switch command {
 	case "list":
 		fmt.Println("List patches in the bank")
@@ -37,7 +41,15 @@ func main() {
 
 		// Now we should have contents of the whole file in `data`.
 
-		b := bank.Parse(data)
+		var b bank.Bank
+		if extension == ".kaa" {
+			b = bank.ParseBankFile(data)
+		} else if extension == ".syx" {
+			b = bank.ParseSysExFile(data)
+		} else {
+			fmt.Printf("Don't know how to handle %s files\n", extension)
+			os.Exit(1)
+		}
 		listPatches(b)
 
 	default:
