@@ -12,29 +12,69 @@ import (
 )
 
 var (
-	command  string
-	fileName string
+	command       string
+	inputFileName string
 
 	usage = "Usage: k5ktool <command> -i <infile>\n" +
-		"<command> = one of: list, convert\n" +
+		"<command> = list or convert\n" +
 		"<infile> = input file (.kaa or .syx)"
 )
 
-func init() {
-	flag.StringVar(&command, "c", "list", "Command - currently only 'list'")
-	flag.StringVar(&fileName, "i", "", "Name of Kawai K5000 bank file (.kaa) or System Exclusive file (.syx)")
-}
+// Guidance for command line argument handling:
+// https://blog.rapid7.com/2016/08/04/build-a-simple-cli-tool-with-golang/
 
 func main() {
-	flag.Parse()
-	// TODO: Check for missing file name argument
-	extension := strings.ToLower(filepath.Ext(fileName))
+	listCommand := flag.NewFlagSet("list", flag.ExitOnError)
+	convertCommand := flag.NewFlagSet("convert", flag.ExitOnError)
 
-	fmt.Fprintf(os.Stdout, "command = %v, fileName = %v, extension = %v\n", command, fileName, extension)
+	// Flags for the list command:
+	listInputFile := listCommand.String("i", "", "Name of Kawai K5000 bank file (.kaa) or System Exclusive file (.syx)")
 
-	data, err := ioutil.ReadFile(fileName) // read the whole file into memory
+	// Flags for the convert command
+	convertInputFile := convertCommand.String("i", "", "Name of Kawai K5000 bank file (.kaa) or System Exclusive file (.syx)")
+
+	if len(os.Args) < 2 {
+		fmt.Println(usage)
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "list":
+		listCommand.Parse(os.Args[2:])
+	case "convert":
+		convertCommand.Parse(os.Args[2:])
+	default:
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	if listCommand.Parsed() {
+		if *listInputFile == "" {
+			listCommand.PrintDefaults()
+			os.Exit(1)
+		}
+
+		command = "list"
+		inputFileName = *listInputFile
+	}
+
+	if convertCommand.Parsed() {
+		if *convertInputFile == "" {
+			convertCommand.PrintDefaults()
+			os.Exit(1)
+		}
+
+		command = "convert"
+		inputFileName = *convertInputFile
+	}
+
+	extension := strings.ToLower(filepath.Ext(inputFileName))
+
+	fmt.Fprintf(os.Stdout, "command = '%v', input file name = '%v', extension = '%v'\n", command, inputFileName, extension)
+
+	data, err := ioutil.ReadFile(inputFileName) // read the whole file into memory
 	if err != nil {
-		fmt.Printf("error opening %s: %s\n", fileName, err)
+		fmt.Printf("error opening %s: %s\n", inputFileName, err)
 		os.Exit(1)
 	}
 
@@ -49,14 +89,15 @@ func main() {
 		fmt.Printf("Don't know how to handle %s files\n", extension)
 		os.Exit(1)
 	}
-	listPatches(b)
 
 	switch command {
 	case "list":
 		fmt.Println("List patches in the bank")
+		listPatches(b)
 
 	case "convert":
 		fmt.Println("Convert patches")
+		fmt.Println("Not implemented yet")
 
 	default:
 		fmt.Println(usage)
