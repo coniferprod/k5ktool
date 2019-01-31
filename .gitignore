@@ -5,7 +5,6 @@ pkg/
 
 # Ignore tool dependencies of Visual Studio Code
 src/golang.org/x/
-src/github.com/
 src/github.com/acroca/
 src/github.com/go-delve/
 src/github.com/mdempsky/
