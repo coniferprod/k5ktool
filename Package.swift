@@ -11,6 +11,10 @@ let package = Package(
         .package(
             url: "https://github.com/johnsundell/files.git",
             from: "1.0.0"
+        ),
+        .package(
+            url: "https://github.com/uraimo/Bitter.git",
+            from: "3.1.1"
         )
     ],
     targets: [
@@ -22,11 +26,11 @@ let package = Package(
         ),
         .target(
             name: "K5KToolCore",
-            dependencies: ["Files"]
+            dependencies: ["Files", "Bitter"]
         ),
         .testTarget(
             name: "K5KToolTests",
-            dependencies: ["K5KToolCore", "Files"]
+            dependencies: ["K5KToolCore", "Files", "Bitter"]
         )
     ]
 )

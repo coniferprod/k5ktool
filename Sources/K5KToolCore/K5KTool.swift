@@ -1,5 +1,6 @@
 import Foundation
 import Files
+import Bitter
 
 let fileSize = 134660
 
@@ -67,19 +68,173 @@ struct GEQ {
 }
 
 struct Common {
-    var name: String
-    var sourceCount: Int
+    var effectAlgorithm: Int
     var reverb: Reverb
+    var effects: [Effect]  // 4 values
+    // drumMark, always zero for normal patches
+    var name: String  // max 8 characters, ASCII
     var volume: Int
     var polyphony: Polyphony
-    var effectAlgorithm: Int
-    var effects: [Effect]
+    // byte 50 is unused
+    var sourceCount: Int  // "No. of sources: 2~6" - maybe should be 1...6 ?
+    var sourceMutes: [Bool]  // lowest six bits indicate sources, bit is 0 if muted but this value is true if source is muted; total six values
     var geq: GEQ
     
 }
 
+typealias EnvelopeSegment = (rate: Int, level: Int)
+typealias LoopingEnvelopeSegment = (rate: Int, level: Int, loop: Bool)
+
+struct HarmonicEnvelope {
+    var segment0: EnvelopeSegment
+    var segment1: LoopingEnvelopeSegment
+    var segment2: LoopingEnvelopeSegment
+    var segment3: EnvelopeSegment
+}
+
+typealias HarmonicCopy = (patch: Int, source: Int)
+
+struct HarmonicParameters {
+    var totalGain: Int
+    
+    // Non-MORF paramaters
+    var harmonicGroup: Bool  // false = low, true = high
+    var keyScalingToGain: Int  // (-63)1 ... (+63)127
+    var velocityCurve: Int
+    var velocityDepth: Int
+
+    // MORF parameters
+    // Harmonic Copy
+    var harmonicCopy1: HarmonicCopy
+    var harmonicCopy2: HarmonicCopy
+    var harmonicCopy3: HarmonicCopy
+    var harmonicCopy4: HarmonicCopy
+    
+    // Harmonic Envelope
+    var envelope: EnvelopeSegment
+    var loopType: Int  // 0 = off, 1 = LP1, 2 = LP2
+}
+
+typealias LFOParameters = (speed: Int, shape: Int, depth: Int)
+
+struct FormantParameters {
+    var bias: Int // (-63)1 ... (+63)127
+    var envLFOSel: Bool // false = env, true = LFO
+    
+    // Envelope paramaters
+    var envelopeDepth: Int  // (-63)1 ... (+63)127
+    var attack: EnvelopeSegment  // rate = 0...127, level = (-63)1 ... (+63)127
+    var decay1: EnvelopeSegment
+    var decay2: EnvelopeSegment
+    var release: EnvelopeSegment
+    var loopType: Int // 0 = off, 1 = LP1, 2 = LP2
+    var velocitySensitivity: Int // (-63)1 ... (+63)127
+    var keyScaling: Int // (-63)1 ... (+63)127
+    
+    var LFO: LFOParameters  // speed = 0...127; shape = 0/TRI, 1=SAW, 2=RND; depth = 0...63
+}
+
+struct AdditiveKit {
+    var checksum: Byte
+    var morfFlag: Bool  // false = MORF OFF, true = MORF ON
+    var harmonics: HarmonicParameters
+    var formant: FormantParameters
+    var lowHarmonics: [Byte]  // 64 values
+    var highHarmonics: [Byte]  // 64 values
+    var formantFilterData: [Byte]  // 128 values
+    var harmonicEnvelopes: [HarmonicEnvelope]  // 64 values
+}
+
+typealias Modulation = (destination: Int, depth: Int)
+
+struct ModulationTarget {
+    var target1: Modulation
+    var target2: Modulation
+}
+
+struct AssignableModulationTarget {
+    var source: Int
+    var target1: Modulation
+    var target2: Modulation
+}
+
+struct Envelope {
+    var attackTime: Int
+    var decay1Time: Int
+    var decay1Level: Int
+    var decay2Time: Int
+    var decay2Level: Int
+    var releaseTime: Int
+}
+
+typealias FilterKeyScalingToEnvelope = (attackTime: Int, decay1Time: Int)
+typealias FilterVelocityToEnvelope = (envelopeDepth: Int, attackTime: Int, decay1Time: Int)
+
+struct Filter {
+    var bypass: Bool
+    var mode: Int  // 0=low pass, 1=high pass
+    var velocityCurve: Int // 0...11 (1...12)
+    var resonance: Int // 0...7
+    var level: Int // 0...7 (7...0)
+    var cutoff: Int // 0...127
+    var cutoffKeyScalingDepth: Int // (-63)1 ... (+63)
+    var cutoffVelocityDepth: Int // (-63)1 ... (+63)
+    var envelopeDepth: Int
+    var envelope: Envelope
+    var keyScalingToEnvelope: FilterKeyScalingToEnvelope
+    var velocityToEnvelope: FilterVelocityToEnvelope
+}
+
+typealias AmplifierKeyScalingToEnvelope = (level: Int, attackTime: Int, decay1Time: Int, releaseTime: Int)
+typealias AmplifierVelocitySensitivity = (level: Int, attackTime: Int, decay1Time: Int, releaseTime: Int)
+
+struct Amplifier {
+    var velocityCurve: Int // 0...11
+    var envelope: Envelope
+    var keyScalingToEnvelope: AmplifierKeyScalingToEnvelope
+    var velocitySensitivity: AmplifierVelocitySensitivity
+}
+
+typealias LFOFadeIn = (time: Int, toSpeed: Int)
+
+typealias LFOModulation = (depth: Int, keyScaling: Int)
+
+struct LFO {
+    var waveform: Int // 0 = Tri, 1 = Sqr, 2 = Saw, 3 = Sin, 4 = Random
+    var speed: Int
+    var delayOnset: Int
+    var fadeIn: LFOFadeIn
+    var vibrato: LFOModulation
+    var growl: LFOModulation
+    var tremolo: LFOModulation
+}
+
+struct Source {
+    var zoneLow: Int
+    var zoneHigh: Int
+    var velocitySwitching: Int // bits 5-6: 0=off, 1=loud, 2=soft. bits 0-4: velo 0=4 ... 31=127 (?)
+    var effectPath: Int
+    var volume: Int
+    var benderPitch: Int
+    var benderCutoff: Int
+    var pressure: ModulationTarget
+    var wheel: ModulationTarget
+    var expression: ModulationTarget
+    var assignable1: AssignableModulationTarget
+    var assignable2: AssignableModulationTarget
+    var keyOnDelay: Int
+    var panType: Int // 0=normal, 1=KS, 2=-KS, 3=random
+    var panValue: Int // (63L)1 ... (+63)127
+    
+    var filter: Filter
+    var amplifier: Amplifier
+    var lfo: LFO
+}
+
 struct Patch {
     var common: Common
+    var sources: [Source]   // six values
+    var additiveKit: AdditiveKit
 }
 
 struct Bank {
@@ -111,6 +266,10 @@ struct BankData {
     static let effect4Offset = 26
     static let maxEffects = 4
     static let GEQOffset = 32
+    static let sourceMutesOffset = 52
+    
+    static let harmonicEnvelopeCount = 64
+    static let formantFilterBandCount = 128
     
     var dataPool: [Byte]
     
@@ -216,6 +375,7 @@ struct BankData {
         
         for (_, pp) in adjustedPatchPointers.enumerated() {
             let dataStart = Int(pp.tonePointer)
+            
             let sourceCount = data.getByteAsInt(start: dataStart + sourceCountOffset)
             let dataSize = commonDataSize + sourceDataSize * sourceCount + additiveWaveKitSize * pp.additiveWaveKitCount
             let dataEnd = dataStart + dataSize
@@ -246,6 +406,17 @@ struct BankData {
                 effects.append(effect)
             }
             
+            var sourceMutes = [Bool]()
+            let sourceMutesValue = data.getByteAsInt(start: sourceMutesOffset)
+            // Find out which bits are zero and turn them into Bool/trues.
+            // Note we do this starting from the lowest bit.
+            sourceMutes.append(sourceMutesValue.b0 == 0)
+            sourceMutes.append(sourceMutesValue.b1 == 0)
+            sourceMutes.append(sourceMutesValue.b2 == 0)
+            sourceMutes.append(sourceMutesValue.b3 == 0)
+            sourceMutes.append(sourceMutesValue.b4 == 0)
+            sourceMutes.append(sourceMutesValue.b5 == 0)
+
             let geq = GEQ(
                 freq1: data.getByteAsInt(start: GEQOffset) - 64,
                 freq2: data.getByteAsInt(start: GEQOffset + 1) - 64,
@@ -255,9 +426,11 @@ struct BankData {
                 freq6: data.getByteAsInt(start: GEQOffset + 5) - 64,
                 freq7: data.getByteAsInt(start: GEQOffset + 6) - 64)
             
-            let common = Common(name: name, sourceCount: sourceCount, reverb: reverb, volume: volume, polyphony: polyphony!, effectAlgorithm: effectAlgorithm, effects: effects, geq: geq)
+            let common = Common(effectAlgorithm: effectAlgorithm, reverb: reverb, effects: effects, name: name, volume: volume, polyphony: polyphony!, sourceCount: sourceCount, sourceMutes: sourceMutes, geq: geq)
             
-            let patch = Patch(common: common)
+            var sources = [Source]()
+            var additiveKit = AdditiveKit(checksum: <#T##Byte#>, morfFlag: <#T##Bool#>, harmonics: <#T##HarmonicParameters#>, formant: <#T##FormantParameters#>, lowHarmonics: <#T##[Byte]#>, highHarmonics: <#T##[Byte]#>, formantFilterData: <#T##[Byte]#>, harmonicEnvelopes: <#T##[HarmonicEnvelope]#>)
+            let patch = Patch(common: common, sources: sources, additiveKit: additiveKit)
             patches.append(patch)
         }
         
