@@ -233,8 +233,7 @@ struct Source {
 
 struct Patch {
     var common: Common
-    var sources: [Source]   // six values
-    var additiveKit: AdditiveKit
+    var sources: [Source]   // six values at most
 }
 
 struct Bank {
@@ -270,6 +269,9 @@ struct BankData {
     
     static let harmonicEnvelopeCount = 64
     static let formantFilterBandCount = 128
+    
+    static let sourceStart = 100
+    static let sourceEnd = 100
     
     var dataPool: [Byte]
     
@@ -310,6 +312,78 @@ struct BankData {
                 param3: data.getByteAsInt(start: start + 4),
                 param4: data.getByteAsInt(start: start + 5))
         }
+        
+        /*
+        func getAdditiveKit(data: Data) -> AdditiveKit {
+            return AdditiveKit(checksum: <#T##Byte#>, morfFlag: <#T##Bool#>, harmonics: <#T##HarmonicParameters#>, formant: <#T##FormantParameters#>, lowHarmonics: <#T##[Byte]#>, highHarmonics: <#T##[Byte]#>, formantFilterData: <#T##[Byte]#>, harmonicEnvelopes: <#T##[HarmonicEnvelope]#>)
+        }
+         */
+        func getSource(from data: Data) -> Source {
+            let values = BankData.getByteRangeAsIntArray(data: data, start: 0, end: data.count - 1)
+            return Source(
+                zoneLow: values[0],
+                zoneHigh: values[1],
+                velocitySwitching: values[2],  // TODO: Parse velocity switching value
+                effectPath: values[3],
+                volume: values[4],
+                benderPitch: values[5],
+                benderCutoff: values[6],
+                pressure: ModulationTarget(
+                    target1: (destination: values[7], depth: values[8]),
+                    target2: (destination: values[9], depth: values[10])),
+                wheel: ModulationTarget(
+                    target1: (destination: values[11], depth: values[12]),
+                    target2: (destination: values[13], depth: values[14])),
+                expression: ModulationTarget(
+                    target1: (destination: values[15], depth: values[16]),
+                    target2: (destination: values[17], depth: values[18])),
+                assignable1: AssignableModulationTarget(
+                    source: values[19],
+                    target1: (destination: values[19], depth: values[20]),
+                    target2: (destination: values[21], depth: values[21])),
+                assignable2: AssignableModulationTarget(
+                    source: values[22],
+                    target1: (destination: values[23], depth: values[24]),
+                    target2: (destination: values[25], depth: values[26])),
+                keyOnDelay: values[27],
+                panType: values[28],
+                panValue: values[29],
+                filter: Filter(
+                    bypass: values[30] == 1,
+                    mode: values[31],
+                    velocityCurve: values[32],
+                    resonance: values[33],
+                    level: values[34],
+                    cutoff: values[35],
+                    cutoffKeyScalingDepth: values[36],
+                    cutoffVelocityDepth: values[37],
+                    envelopeDepth: values[38],
+                    envelope: Envelope(
+                        attackTime: values[39],
+                        decay1Time: values[40],
+                        decay1Level: values[41],
+                        decay2Time: values[42],
+                        decay2Level: values[43],
+                        releaseTime: values[44]),
+                    keyScalingToEnvelope: (attackTime: values[45], decay1Time: values[46]),
+                    velocityToEnvelope: (envelopeDepth: values[47], attackTime: values[48], decay1Time: values[49])),
+                amplifier: Amplifier(
+                    velocityCurve: values[50],
+                    envelope: Envelope(
+                        attackTime: values[51],
+                        decay1Time: values[52],
+                        decay1Level: values[53],
+                        decay2Time: values[54],
+                        decay2Level: values[55],
+                        releaseTime: values[56]),
+                    keyScalingToEnvelope: (level: values[57], attackTime: values[58], decay1Time: values[59], releaseTime: values[60]),
+                    velocitySensitivity: (level: values[61], attackTime: values[62], decay1Time: values[64], releaseTime: values[64])),
+                lfo: LFO(
+                    waveform: values[65], speed: values[66], delayOnset: values[67], fadeIn: (time: values[68], toSpeed: values[69]), vibrato: (depth: values[70], keyScaling: values[71]), growl: (depth: values[72], keyScaling: values[73]), tremolo: (depth: values[74], keyScaling: values[75])
+                )
+            )
+        }
+        
         
         var patchPointers = [PatchPointer]()
         var offset = 0
@@ -429,12 +503,36 @@ struct BankData {
             let common = Common(effectAlgorithm: effectAlgorithm, reverb: reverb, effects: effects, name: name, volume: volume, polyphony: polyphony!, sourceCount: sourceCount, sourceMutes: sourceMutes, geq: geq)
             
             var sources = [Source]()
+            var sourceIndex = 0
+            while sourceIndex < sourceCount {
+                let sourceStart = commonDataSize
+                let sourceEnd = commonDataSize + sourceIndex * sourceDataSize
+                print("source data = \(sourceStart) ... \(sourceEnd)")
+                let source = getSource(from: data.subdata(in: sourceStart..<sourceEnd))
+                sourceIndex += 1
+                
+                sources.append(source)
+            }
+            
+            /*
             var additiveKit = AdditiveKit(checksum: <#T##Byte#>, morfFlag: <#T##Bool#>, harmonics: <#T##HarmonicParameters#>, formant: <#T##FormantParameters#>, lowHarmonics: <#T##[Byte]#>, highHarmonics: <#T##[Byte]#>, formantFilterData: <#T##[Byte]#>, harmonicEnvelopes: <#T##[HarmonicEnvelope]#>)
-            let patch = Patch(common: common, sources: sources, additiveKit: additiveKit)
+            */
+            
+            let patch = Patch(common: common, sources: sources)
             patches.append(patch)
         }
         
         return Bank(patches: patches)
+    }
+    
+    static func getByteRangeAsIntArray(data: Data, start: Int, end: Int) -> [Int] {
+        var result = [Int]()
+        var i = start
+        while i <= end {
+            result.append(data.getByteAsInt(start: i))
+            i += 1
+        }
+        return result
     }
 }
 
@@ -479,6 +577,12 @@ public final class K5KTool {
             for i in 0..<common.effects.count {
                 let effect = common.effects[i]
                 print("Effect #\(i) = \(effect.description)")
+            }
+            
+            print("Sources: \(common.sourceCount)")
+            for i in 0..<common.sourceCount {
+                let source = patch.sources[i]
+                print("Source #\(i) = \(source)")
             }
             
             print()
