@@ -688,6 +688,78 @@ type LFOSettings struct {
 	Tremolo    LFOModulationSettings
 }
 
+type EnvelopeSegment struct {
+	Rate    int
+	Level   int
+	Looping bool
+}
+
+type HarmonicEnvelope struct {
+	Segment1 EnvelopeSegment
+	Segment2 EnvelopeSegment
+	Segment3 EnvelopeSegment
+	Segment4 EnvelopeSegment
+}
+
+type HarmonicCopyParameters struct {
+	PatchNumber  int
+	SourceNumber int
+}
+
+type HarmonicParameters struct {
+	TotalGain int
+
+	// Non-MORF parameters
+	HarmonicGroup    bool
+	KeyScalingToGain int
+	VelocityCurve    int
+	VelocityDepth    int
+
+	// MORF parameters
+	// Harmonic Copy
+	HarmonicCopy1 HarmonicCopyParameters
+	HarmonicCopy2 HarmonicCopyParameters
+	HarmonicCopy3 HarmonicCopyParameters
+	HarmonicCopy4 HarmonicCopyParameters
+
+	// Harmonic envelope
+	Envelope EnvelopeSegment
+	LoopType int
+}
+
+type LFOParameters struct {
+	Speed int
+	Shape int
+	Depth int
+}
+
+type FormantParameters struct {
+	Bias      int  // (-63)1 ... (+63)127
+	EnvLFOSel bool // false = env, true = LFO
+
+	// Envelope parameters
+	EnvelopeDepth       int             // (-63)1 ... (+63)127
+	Attack              EnvelopeSegment // rate = 0...127, level = (-63)1 ... (+63)127
+	Decay1              EnvelopeSegment
+	Decay2              EnvelopeSegment
+	Release             EnvelopeSegment
+	LoopType            int // 0 = off, 1 = LP1, 2 = LP2
+	VelocitySensitivity int // (-63)1 ... (+63)127
+	KeyScaling          int // (-63)1 ... (+63)127
+
+	LFO LFOParameters // speed = 0...127; shape = 0/TRI, 1=SAW, 2=RND; depth = 0...63
+}
+
+type AdditiveKit struct {
+	MorfFlag          bool // false = MORF OFF, true = MORF ON
+	Harmonics         HarmonicParameters
+	Formant           FormantParameters
+	LowHarmonics      [64]byte
+	HighHarmonics     [64]byte
+	FormantFilterData [128]byte
+	HarmonicEnvelopes [64]HarmonicEnvelope
+}
+
 // Source represents the data of one of the up to six patch sources.
 type Source struct {
 	ZoneLow           int
