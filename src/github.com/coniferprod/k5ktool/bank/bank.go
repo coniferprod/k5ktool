@@ -79,6 +79,20 @@ func (r Reverb) ParamDescription(i int) string {
 	}
 }
 
+func (r Reverb) String() string {
+	return fmt.Sprintf("%s, %d%% wet, %s = %d, %s = %d, %s = %d, %s = %d",
+		r.Description(),
+		r.ReverbDryWet,
+		r.ParamDescription(1),
+		r.ReverbParam1,
+		r.ParamDescription(2),
+		r.ReverbParam2,
+		r.ParamDescription(3),
+		r.ReverbParam3,
+		r.ParamDescription(4),
+		r.ReverbParam4)
+}
+
 // Effect stores the effect settings of a patch.
 type Effect struct {
 	EffectType   int
@@ -139,24 +153,29 @@ func (e Effect) Description() string {
 	return s
 }
 
+func (e Effect) String() string {
+	return fmt.Sprintf("%s, depth = %d, param1 = %d, param2 = %d, param3 = %d, param4 = %d",
+		e.Description(),
+		e.EffectDepth,
+		e.EffectParam1,
+		e.EffectParam2,
+		e.EffectParam3,
+		e.EffectParam3)
+}
+
 func getEffect(data []byte) Effect {
 	effectType := 0
 	if data[0] != 0 {
 		effectType = int(data[0]) - 11
 	}
-	depth := int(data[1])
-	param1 := int(data[2])
-	param2 := int(data[3])
-	param3 := int(data[4])
-	param4 := int(data[5])
 
 	return Effect{
 		EffectType:   effectType,
-		EffectDepth:  depth,
-		EffectParam1: param1,
-		EffectParam2: param2,
-		EffectParam3: param3,
-		EffectParam4: param4,
+		EffectDepth:  int(data[1]),
+		EffectParam1: int(data[2]),
+		EffectParam2: int(data[3]),
+		EffectParam3: int(data[4]),
+		EffectParam4: int(data[5]),
 	}
 }
 
@@ -171,28 +190,169 @@ type GEQ struct {
 	Freq7 int
 }
 
+func (g GEQ) String() string {
+	return fmt.Sprintf("%d %d %d %d %d %d %d",
+		g.Freq1,
+		g.Freq2,
+		g.Freq3,
+		g.Freq4,
+		g.Freq5,
+		g.Freq6,
+		g.Freq7)
+}
+
+// EnvelopeSettings describes the parameters of an envelope.
+type EnvelopeSettings struct {
+	AttackTime  int
+	Decay1Time  int
+	Decay1Level int
+	Decay2Time  int
+	Decay2Level int
+	ReleaseTime int
+}
+
+type Modulation struct {
+	Destination int
+	Depth       int
+}
+
+type ModulationTarget struct {
+	Target1 Modulation
+	Target2 Modulation
+}
+
+type AssignableModulationTarget struct {
+	Source           int
+	ModulationTarget // NOTE: embedded struct
+}
+
+type PanSettings struct {
+	PanType  int
+	PanValue int
+}
+
+type FilterKeyScalingToEnvelope struct {
+	AttackTime int
+	Decay1Time int
+}
+
+type FilterVelocityToEnvelope struct {
+	EnvelopeDepth int
+	AttackTime    int
+	Decay1Time    int
+}
+
+type FilterSettings struct {
+	Bypass                bool
+	Mode                  int
+	VelocityCurve         int
+	Resonance             int
+	Level                 int
+	Cutoff                int
+	CutoffKeyScalingDepth int
+	CutoffVelocityDepth   int
+	EnvelopeDepth         int
+	Envelope              EnvelopeSettings
+	KeyScalingToEnvelope  FilterKeyScalingToEnvelope
+	VelocityToEnvelope    FilterVelocityToEnvelope
+}
+
+type AmplifierKeyScalingToEnvelope struct {
+	Level       int
+	AttackTime  int
+	Decay1Time  int
+	ReleaseTime int
+}
+
+type AmplifierVelocitySensitivity struct {
+	Level       int
+	AttackTime  int
+	Decay1Time  int
+	ReleaseTime int
+}
+
+// Note that AmplifierKeyScalingToEnvelope and AmplifierVelocitySensitivity are essentially the same type.
+
+type AmplifierSettings struct {
+	VelocityCurve        int
+	Envelope             EnvelopeSettings
+	KeyScalingToEnvelope AmplifierKeyScalingToEnvelope
+	VelocitySensitivity  AmplifierVelocitySensitivity
+}
+
+type LFOFadeInSettings struct {
+	Time    int
+	ToSpeed int
+}
+
+type LFOModulationSettings struct {
+	Depth      int
+	KeyScaling int
+}
+
+type LFOSettings struct {
+	Waveform   int
+	Speed      int
+	DelayOnset int
+	FadeIn     LFOFadeInSettings
+	Vibrato    LFOModulationSettings
+	Growl      LFOModulationSettings
+	Tremolo    LFOModulationSettings
+}
+
+// Source represents the data of one of the up to six patch sources.
+type Source struct {
+	ZoneLow           int
+	ZoneHigh          int
+	VelocitySwitching int // bits 5-6: 0=off, 1=loud, 2=soft. bits 0-4: velo 0=4 ... 31=127 (?)
+	EffectPath        int
+	Volume            int
+	BenderPitch       int
+	BenderCutoff      int
+	Pressure          ModulationTarget
+	Wheel             ModulationTarget
+	Expression        ModulationTarget
+	Assignable1       AssignableModulationTarget
+	Assignable2       AssignableModulationTarget
+	KeyOnDelay        int
+	Pan               PanSettings
+
+	Filter    FilterSettings
+	Amplifier AmplifierSettings
+	LFO       LFOSettings
+}
+
 // Use struct embedding to avoid clash between member and type name.
 // See https://notes.shichao.io/gopl/ch4/#struct-embedding-and-anonymous-fields
 // It's probably a good idea to use unique names for the fields in the struct-to-embed.
 
 // Common stores the common parameters for a patch.
 type Common struct {
-	Name            string
-	SourceCount     int
-	Reverb          // this means that there is a Reverb struct as a part of Common ("struct embedding")
-	Volume          int
-	Polyphony       int
 	EffectAlgorithm int
+	Reverb          // this means that there is a Reverb struct as a part of Common ("struct embedding")
 	Effect1         Effect
 	Effect2         Effect
 	Effect3         Effect
 	Effect4         Effect
 	GEQ
+	Name        string
+	Volume      int
+	Polyphony   int
+	SourceCount int
+	SourceMutes [numSources]bool // "Go does not provide a set type, but since the keys of a map are distinct, a map can serve this pur pose." TGPL p. 96
+
+	// AM: Selects sources for Amplitude Modulation. One source can be set to modulate an adjacent source, i.e., 1>2.
+	AmplitudeModulation int
+}
+
+func (c Common) String() string {
+	return fmt.Sprintf("%8s  vol=%3d  poly=%d\nnumber of sources = %d\neffect algorithm = %d", c.Name, c.Volume, c.Polyphony, c.SourceCount, c.EffectAlgorithm)
 }
 
 // Patch represents the parameters of a sound.
 type Patch struct {
 	Common
+	Sources [numSources]Source
 }
 
 // Bank contains 128 patches.
@@ -356,6 +516,157 @@ func ParseBankFile(bs []byte) Bank {
 			Freq7: int(d[gEQOffset+6] - 64),
 		}
 
+		sourceOffset := commonDataSize // source data starts after common data
+		var sources [numSources]Source
+		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
+			if sourceIndex < sourceCount {
+				newSource := Source{
+					ZoneLow:           int(d[sourceOffset]),
+					ZoneHigh:          int(d[sourceOffset+1]),
+					VelocitySwitching: int(d[sourceOffset+2]),
+					EffectPath:        int(d[sourceOffset+3]),
+					Volume:            int(d[sourceOffset+4]),
+					BenderPitch:       int(d[sourceOffset+5]),
+					BenderCutoff:      int(d[sourceOffset+6]),
+					Pressure: ModulationTarget{
+						Target1: Modulation{
+							Destination: int(d[sourceOffset+7]),
+							Depth:       int(d[sourceOffset+8]),
+						},
+						Target2: Modulation{
+							Destination: int(d[sourceOffset+9]),
+							Depth:       int(d[sourceOffset+10]),
+						},
+					},
+					Wheel: ModulationTarget{
+						Target1: Modulation{
+							Destination: int(d[sourceOffset+11]),
+							Depth:       int(d[sourceOffset+12]),
+						},
+						Target2: Modulation{
+							Destination: int(d[sourceOffset+13]),
+							Depth:       int(d[sourceOffset+14]),
+						},
+					},
+					Expression: ModulationTarget{
+						Target1: Modulation{
+							Destination: int(d[sourceOffset+15]),
+							Depth:       int(d[sourceOffset+16]),
+						},
+						Target2: Modulation{
+							Destination: int(d[sourceOffset+17]),
+							Depth:       int(d[sourceOffset+18]),
+						},
+					},
+					Assignable1: AssignableModulationTarget{
+						Source: int(d[sourceOffset+19]),
+						ModulationTarget: ModulationTarget{
+							Target1: Modulation{
+								Destination: int(d[sourceOffset+20]),
+								Depth:       int(d[sourceOffset+21]),
+							},
+							Target2: Modulation{
+								Destination: int(d[sourceOffset+22]),
+								Depth:       int(d[sourceOffset+23]),
+							},
+						},
+					},
+					Assignable2: AssignableModulationTarget{
+						Source: int(d[sourceOffset+24]),
+						ModulationTarget: ModulationTarget{
+							Target1: Modulation{
+								Destination: int(d[sourceOffset+25]),
+								Depth:       int(d[sourceOffset+26]),
+							},
+							Target2: Modulation{
+								Destination: int(d[sourceOffset+27]),
+								Depth:       int(d[sourceOffset+28]),
+							},
+						},
+					},
+					KeyOnDelay: int(d[sourceOffset+29]),
+					Pan: PanSettings{
+						PanType:  int(d[sourceOffset+30]),
+						PanValue: int(d[sourceOffset+31]),
+					},
+					Filter: FilterSettings{
+						Bypass:                int(d[sourceOffset+32]) == 1,
+						Mode:                  int(d[sourceOffset+33]),
+						VelocityCurve:         int(d[sourceOffset+33]),
+						Resonance:             int(d[sourceOffset+34]),
+						Level:                 int(d[sourceOffset+35]),
+						Cutoff:                int(d[sourceOffset+36]),
+						CutoffKeyScalingDepth: int(d[sourceOffset+37]),
+						CutoffVelocityDepth:   int(d[sourceOffset+38]),
+						EnvelopeDepth:         int(d[sourceOffset+39]),
+						Envelope: EnvelopeSettings{
+							AttackTime:  int(d[sourceOffset+40]),
+							Decay1Time:  int(d[sourceOffset+41]),
+							Decay1Level: int(d[sourceOffset+42]),
+							Decay2Time:  int(d[sourceOffset+43]),
+							Decay2Level: int(d[sourceOffset+44]),
+							ReleaseTime: int(d[sourceOffset+45]),
+						},
+						KeyScalingToEnvelope: FilterKeyScalingToEnvelope{
+							AttackTime: int(d[sourceOffset+46]),
+							Decay1Time: int(d[sourceOffset+47]),
+						},
+						VelocityToEnvelope: FilterVelocityToEnvelope{
+							EnvelopeDepth: int(d[sourceOffset+48]),
+							AttackTime:    int(d[sourceOffset+49]),
+							Decay1Time:    int(d[sourceOffset+50]),
+						},
+					},
+					Amplifier: AmplifierSettings{
+						VelocityCurve: int(d[sourceOffset+51]),
+						Envelope: EnvelopeSettings{
+							AttackTime:  int(d[sourceOffset+52]),
+							Decay1Time:  int(d[sourceOffset+53]),
+							Decay1Level: int(d[sourceOffset+54]),
+							Decay2Time:  int(d[sourceOffset+55]),
+							Decay2Level: int(d[sourceOffset+56]),
+							ReleaseTime: int(d[sourceOffset+57]),
+						},
+						KeyScalingToEnvelope: AmplifierKeyScalingToEnvelope{
+							Level:       int(d[sourceOffset+58]),
+							AttackTime:  int(d[sourceOffset+59]),
+							Decay1Time:  int(d[sourceOffset+60]),
+							ReleaseTime: int(d[sourceOffset+61]),
+						},
+						VelocitySensitivity: AmplifierVelocitySensitivity{
+							Level:       int(d[sourceOffset+62]),
+							AttackTime:  int(d[sourceOffset+63]),
+							Decay1Time:  int(d[sourceOffset+64]),
+							ReleaseTime: int(d[sourceOffset+65]),
+						},
+					},
+					LFO: LFOSettings{
+						Waveform:   int(d[sourceOffset+66]),
+						Speed:      int(d[sourceOffset+67]),
+						DelayOnset: int(d[sourceOffset+68]),
+						FadeIn: LFOFadeInSettings{
+							Time:    int(d[sourceOffset+69]),
+							ToSpeed: int(d[sourceOffset+70]),
+						},
+						Vibrato: LFOModulationSettings{
+							Depth:      int(d[sourceOffset+71]),
+							KeyScaling: int(d[sourceOffset+72]),
+						},
+						Growl: LFOModulationSettings{
+							Depth:      int(d[sourceOffset+73]),
+							KeyScaling: int(d[sourceOffset+74]),
+						},
+						Tremolo: LFOModulationSettings{
+							Depth:      int(d[sourceOffset+75]),
+							KeyScaling: int(d[sourceOffset+76]),
+						},
+					},
+				}
+				sources[sourceIndex] = newSource
+				sourceOffset += sourceDataSize
+			}
+		}
+
 		// With struct embedding, the literal must follow the shape of the type declaration. (TGPL, p. 106)
 		c := Common{
 			Name:        name,
@@ -378,7 +689,7 @@ func ParseBankFile(bs []byte) Bank {
 			GEQ:             geq,
 		}
 
-		patch := Patch{Common: c}
+		patch := Patch{Common: c, Sources: sources}
 		b.Patches[pp.index] = patch
 	}
 
