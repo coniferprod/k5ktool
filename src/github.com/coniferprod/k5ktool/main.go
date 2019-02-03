@@ -14,10 +14,12 @@ import (
 var (
 	command       string
 	inputFileName string
+	patchNumber   int
 
-	usage = "Usage: k5ktool <command> -i <infile>\n" +
+	usage = "Usage: k5ktool <command> -i <infile> -p <patchnum>\n" +
 		"<command> = list or convert\n" +
-		"<infile> = input file (.kaa or .syx)"
+		"<infile> = input file (.kaa or .syx)\n" +
+		"<patchnum> = patch number in bank (1...128, default is all)"
 )
 
 // Guidance for command line argument handling:
@@ -25,6 +27,8 @@ var (
 
 func main() {
 	listCommand := flag.NewFlagSet("list", flag.ExitOnError)
+	patchNumberPtr := listCommand.Int("p", 0, "Patch number 1 – 128 (default is all patches in the bank)")
+
 	convertCommand := flag.NewFlagSet("convert", flag.ExitOnError)
 
 	// Flags for the list command:
@@ -48,6 +52,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	patchNumber := 0 // default to 0 = all patches
+
 	if listCommand.Parsed() {
 		if *listInputFileName == "" {
 			listCommand.PrintDefaults()
@@ -56,6 +62,7 @@ func main() {
 
 		command = "list"
 		inputFileName = *listInputFileName
+		patchNumber = *patchNumberPtr
 	}
 
 	if convertCommand.Parsed() {
@@ -70,7 +77,7 @@ func main() {
 
 	extension := strings.ToLower(filepath.Ext(inputFileName))
 
-	fmt.Fprintf(os.Stdout, "command = '%v', input file name = '%v', extension = '%v'\n", command, inputFileName, extension)
+	fmt.Fprintf(os.Stdout, "command = '%v', input file name = '%v', extension = '%v', patchNumber = %d\n", command, inputFileName, extension, patchNumber)
 
 	data, err := ioutil.ReadFile(inputFileName) // read the whole file into memory
 	if err != nil {
@@ -93,7 +100,11 @@ func main() {
 	switch command {
 	case "list":
 		fmt.Println("List patches in the bank")
-		listPatches(b)
+		if patchNumber == 0 {
+			listAllPatches(b)
+		} else {
+			listPatch(b, patchNumber)
+		}
 
 	case "convert":
 		fmt.Println("Convert patches")
@@ -105,19 +116,23 @@ func main() {
 	}
 }
 
-func listPatches(b bank.Bank) {
+func listPatch(b bank.Bank, i int) {
+	p := b.Patches[i-1]
+	fmt.Printf("%3d  %s\n", i, p.Common)
+	fmt.Println(p.Common.Reverb)
+	fmt.Printf("effect 1: %s\n", p.Common.Effect1)
+	fmt.Printf("effect 2: %s\n", p.Common.Effect1)
+	fmt.Printf("effect 3: %s\n", p.Common.Effect1)
+	fmt.Printf("effect 4: %s\n", p.Common.Effect1)
+	fmt.Printf("GEQ: %s\n", p.Common.GEQ)
+	for s := 0; s < p.Common.SourceCount; s++ {
+		fmt.Printf("S%d: %#v\n", s+1, p.Sources[s])
+	}
+}
+
+func listAllPatches(b bank.Bank) {
 	for i := 0; i < bank.NumPatches; i++ {
-		p := b.Patches[i]
-		fmt.Printf("%3d  %s\n", i+1, p.Common)
-		fmt.Println(p.Common.Reverb)
-		fmt.Printf("effect 1: %s\n", p.Common.Effect1)
-		fmt.Printf("effect 2: %s\n", p.Common.Effect1)
-		fmt.Printf("effect 3: %s\n", p.Common.Effect1)
-		fmt.Printf("effect 4: %s\n", p.Common.Effect1)
-		fmt.Printf("GEQ: %s\n", p.Common.GEQ)
-		for s := 0; s < p.Common.SourceCount; s++ {
-			fmt.Printf("S%d: %#v\n", s+1, p.Sources[s])
-		}
+		listPatch(b, i)
 		fmt.Println()
 	}
 }
