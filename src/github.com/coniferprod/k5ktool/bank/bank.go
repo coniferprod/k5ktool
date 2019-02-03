@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 )
 
 const (
@@ -205,6 +206,11 @@ type EnvelopeSettings struct {
 	ReleaseTime int
 }
 
+func (e EnvelopeSettings) String() string {
+	return fmt.Sprintf("Atk T = %d, Dcy1 T = %d, Dcy1 L = %d, Dcy2 T = %d, Dcy2 L = %d, Rels T = %d",
+		e.AttackTime, e.Decay1Time, e.Decay1Level, e.Decay2Time, e.Decay2Level, e.ReleaseTime)
+}
+
 type Modulation struct {
 	Destination int
 	Depth       int
@@ -216,13 +222,41 @@ type ModulationTarget struct {
 }
 
 type AssignableModulationTarget struct {
-	Source           int
-	ModulationTarget // NOTE: embedded struct
+	Source     int
+	Modulation // NOTE: embedded struct
 }
 
 type PanSettings struct {
 	PanType  int
 	PanValue int
+}
+
+type PitchEnvelopeSettings struct {
+	StartLevel  int
+	AttackTime  int
+	AttackLevel int
+	DecayTime   int
+}
+
+type OscillatorSettings struct {
+	WaveKit         int
+	Coarse          int
+	Fine            int
+	FixedKey        int
+	KSPitch         int
+	PitchEnvelope   PitchEnvelopeSettings
+	VelocityToTime  int
+	VelocityToLevel int
+}
+
+func (o OscillatorSettings) String() string {
+	waveKitName := "0"
+	if o.WaveKit == 512 {
+		waveKitName = "ADD"
+	} else {
+		waveKitName = strconv.Itoa(o.WaveKit)
+	}
+	return waveKitName
 }
 
 type FilterKeyScalingToEnvelope struct {
@@ -237,7 +271,7 @@ type FilterVelocityToEnvelope struct {
 }
 
 type FilterSettings struct {
-	Bypass                bool
+	Bypassed              bool
 	Mode                  int
 	VelocityCurve         int
 	Resonance             int
@@ -249,6 +283,20 @@ type FilterSettings struct {
 	Envelope              EnvelopeSettings
 	KeyScalingToEnvelope  FilterKeyScalingToEnvelope
 	VelocityToEnvelope    FilterVelocityToEnvelope
+}
+
+func (f FilterSettings) String() string {
+	filterState := "active"
+	if f.Bypassed {
+		filterState = "bypassed"
+	}
+
+	filterMode := "lowpass"
+	if f.Mode == 1 {
+		filterMode = "highpass"
+	}
+	return fmt.Sprintf("state = %s, mode = %s, level = %d, cutoff = %d, velocity curve = %d, resonance = %d, KS to Cut = %d, Velo to Cut = %d",
+		filterState, filterMode, f.Level, f.Cutoff, f.VelocityCurve, f.Resonance, f.CutoffKeyScalingDepth, f.CutoffVelocityDepth)
 }
 
 type AmplifierKeyScalingToEnvelope struct {
@@ -310,10 +358,10 @@ type Source struct {
 	Assignable2       AssignableModulationTarget
 	KeyOnDelay        int
 	Pan               PanSettings
-
-	Filter    FilterSettings
-	Amplifier AmplifierSettings
-	LFO       LFOSettings
+	Oscillator        OscillatorSettings
+	Filter            FilterSettings
+	Amplifier         AmplifierSettings
+	LFO               LFOSettings
 }
 
 // Use struct embedding to avoid clash between member and type name.
@@ -507,6 +555,9 @@ func ParseBankFile(bs []byte) Bank {
 		var sources [numSources]Source
 		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
 			if sourceIndex < sourceCount {
+				waveKitMSB := int(d[sourceOffset+28])
+				waveKitLSB := int(d[sourceOffset+29])
+				waveKitNumber := waveKitMSB*128 + waveKitLSB
 				newSource := Source{
 					ZoneLow:           int(d[sourceOffset]),
 					ZoneHigh:          int(d[sourceOffset+1]),
@@ -547,105 +598,108 @@ func ParseBankFile(bs []byte) Bank {
 					},
 					Assignable1: AssignableModulationTarget{
 						Source: int(d[sourceOffset+19]),
-						ModulationTarget: ModulationTarget{
-							Target1: Modulation{
-								Destination: int(d[sourceOffset+20]),
-								Depth:       int(d[sourceOffset+21]),
-							},
-							Target2: Modulation{
-								Destination: int(d[sourceOffset+22]),
-								Depth:       int(d[sourceOffset+23]),
-							},
+						Modulation: Modulation{
+							Destination: int(d[sourceOffset+20]),
+							Depth:       int(d[sourceOffset+21]),
 						},
 					},
 					Assignable2: AssignableModulationTarget{
-						Source: int(d[sourceOffset+24]),
-						ModulationTarget: ModulationTarget{
-							Target1: Modulation{
-								Destination: int(d[sourceOffset+25]),
-								Depth:       int(d[sourceOffset+26]),
-							},
-							Target2: Modulation{
-								Destination: int(d[sourceOffset+27]),
-								Depth:       int(d[sourceOffset+28]),
-							},
+						Source: int(d[sourceOffset+22]),
+						Modulation: Modulation{
+							Destination: int(d[sourceOffset+23]),
+							Depth:       int(d[sourceOffset+24]),
 						},
 					},
-					KeyOnDelay: int(d[sourceOffset+29]),
+					KeyOnDelay: int(d[sourceOffset+25]),
 					Pan: PanSettings{
-						PanType:  int(d[sourceOffset+30]),
-						PanValue: int(d[sourceOffset+31]),
+						PanType:  int(d[sourceOffset+26]),
+						PanValue: int(d[sourceOffset+27]),
+					},
+					Oscillator: OscillatorSettings{
+						WaveKit:  waveKitNumber + 1,
+						Coarse:   int(d[sourceOffset+30]), // TODO: handle (-24)40 ... +24(88)
+						Fine:     int(d[sourceOffset+31]) - 64,
+						FixedKey: int(d[sourceOffset+32]),
+						KSPitch:  int(d[sourceOffset+33]),
+						PitchEnvelope: PitchEnvelopeSettings{
+							StartLevel:  int(d[sourceOffset+34]) - 64,
+							AttackTime:  int(d[sourceOffset+35]),
+							AttackLevel: int(d[sourceOffset+36]) - 64,
+							DecayTime:   int(d[sourceOffset+37]),
+						},
+						VelocityToTime:  int(d[sourceOffset+38]) - 64,
+						VelocityToLevel: int(d[sourceOffset+39]) - 64,
 					},
 					Filter: FilterSettings{
-						Bypass:                int(d[sourceOffset+32]) == 1,
-						Mode:                  int(d[sourceOffset+33]),
-						VelocityCurve:         int(d[sourceOffset+33]),
-						Resonance:             int(d[sourceOffset+34]),
-						Level:                 int(d[sourceOffset+35]),
-						Cutoff:                int(d[sourceOffset+36]),
-						CutoffKeyScalingDepth: int(d[sourceOffset+37]),
-						CutoffVelocityDepth:   int(d[sourceOffset+38]),
-						EnvelopeDepth:         int(d[sourceOffset+39]),
+						Bypassed:              int(d[sourceOffset+40]) == 1,
+						Mode:                  int(d[sourceOffset+41]),
+						VelocityCurve:         int(d[sourceOffset+42]) + 1, // make it 1...12
+						Resonance:             int(d[sourceOffset+43]),
+						Level:                 int(d[sourceOffset+44]), // check the 0...7 (7...0) thing
+						Cutoff:                int(d[sourceOffset+45]),
+						CutoffKeyScalingDepth: int(d[sourceOffset+46]) - 64,
+						CutoffVelocityDepth:   int(d[sourceOffset+47]) - 64,
+						EnvelopeDepth:         int(d[sourceOffset+48]) - 64,
 						Envelope: EnvelopeSettings{
-							AttackTime:  int(d[sourceOffset+40]),
-							Decay1Time:  int(d[sourceOffset+41]),
-							Decay1Level: int(d[sourceOffset+42]),
-							Decay2Time:  int(d[sourceOffset+43]),
-							Decay2Level: int(d[sourceOffset+44]),
-							ReleaseTime: int(d[sourceOffset+45]),
+							AttackTime:  int(d[sourceOffset+49]),
+							Decay1Time:  int(d[sourceOffset+50]),
+							Decay1Level: int(d[sourceOffset+51]) - 64,
+							Decay2Time:  int(d[sourceOffset+52]),
+							Decay2Level: int(d[sourceOffset+53]) - 64,
+							ReleaseTime: int(d[sourceOffset+54]),
 						},
 						KeyScalingToEnvelope: FilterKeyScalingToEnvelope{
-							AttackTime: int(d[sourceOffset+46]),
-							Decay1Time: int(d[sourceOffset+47]),
+							AttackTime: int(d[sourceOffset+55]) - 64,
+							Decay1Time: int(d[sourceOffset+56]) - 64,
 						},
 						VelocityToEnvelope: FilterVelocityToEnvelope{
-							EnvelopeDepth: int(d[sourceOffset+48]),
-							AttackTime:    int(d[sourceOffset+49]),
-							Decay1Time:    int(d[sourceOffset+50]),
+							EnvelopeDepth: int(d[sourceOffset+57]) - 64,
+							AttackTime:    int(d[sourceOffset+58]) - 64,
+							Decay1Time:    int(d[sourceOffset+59]) - 64,
 						},
 					},
 					Amplifier: AmplifierSettings{
-						VelocityCurve: int(d[sourceOffset+51]),
+						VelocityCurve: int(d[sourceOffset+60]), // zero- or one-based?
 						Envelope: EnvelopeSettings{
-							AttackTime:  int(d[sourceOffset+52]),
-							Decay1Time:  int(d[sourceOffset+53]),
-							Decay1Level: int(d[sourceOffset+54]),
-							Decay2Time:  int(d[sourceOffset+55]),
-							Decay2Level: int(d[sourceOffset+56]),
-							ReleaseTime: int(d[sourceOffset+57]),
+							AttackTime:  int(d[sourceOffset+61]),
+							Decay1Time:  int(d[sourceOffset+62]),
+							Decay1Level: int(d[sourceOffset+63]),
+							Decay2Time:  int(d[sourceOffset+64]),
+							Decay2Level: int(d[sourceOffset+65]),
+							ReleaseTime: int(d[sourceOffset+66]),
 						},
 						KeyScalingToEnvelope: AmplifierKeyScalingToEnvelope{
-							Level:       int(d[sourceOffset+58]),
-							AttackTime:  int(d[sourceOffset+59]),
-							Decay1Time:  int(d[sourceOffset+60]),
-							ReleaseTime: int(d[sourceOffset+61]),
+							Level:       int(d[sourceOffset+67]) - 64,
+							AttackTime:  int(d[sourceOffset+68]) - 64,
+							Decay1Time:  int(d[sourceOffset+69]) - 64,
+							ReleaseTime: int(d[sourceOffset+70]) - 64,
 						},
 						VelocitySensitivity: AmplifierVelocitySensitivity{
-							Level:       int(d[sourceOffset+62]),
-							AttackTime:  int(d[sourceOffset+63]),
-							Decay1Time:  int(d[sourceOffset+64]),
-							ReleaseTime: int(d[sourceOffset+65]),
+							Level:       int(d[sourceOffset+71]),
+							AttackTime:  int(d[sourceOffset+72]) - 64,
+							Decay1Time:  int(d[sourceOffset+73]) - 64,
+							ReleaseTime: int(d[sourceOffset+74]) - 64,
 						},
 					},
 					LFO: LFOSettings{
-						Waveform:   int(d[sourceOffset+66]),
-						Speed:      int(d[sourceOffset+67]),
-						DelayOnset: int(d[sourceOffset+68]),
+						Waveform:   int(d[sourceOffset+75]),
+						Speed:      int(d[sourceOffset+76]),
+						DelayOnset: int(d[sourceOffset+77]),
 						FadeIn: LFOFadeInSettings{
-							Time:    int(d[sourceOffset+69]),
-							ToSpeed: int(d[sourceOffset+70]),
+							Time:    int(d[sourceOffset+78]),
+							ToSpeed: int(d[sourceOffset+79]),
 						},
 						Vibrato: LFOModulationSettings{
-							Depth:      int(d[sourceOffset+71]),
-							KeyScaling: int(d[sourceOffset+72]),
+							Depth:      int(d[sourceOffset+80]),
+							KeyScaling: int(d[sourceOffset+81]) - 64,
 						},
 						Growl: LFOModulationSettings{
-							Depth:      int(d[sourceOffset+73]),
-							KeyScaling: int(d[sourceOffset+74]),
+							Depth:      int(d[sourceOffset+82]),
+							KeyScaling: int(d[sourceOffset+83]) - 64,
 						},
 						Tremolo: LFOModulationSettings{
-							Depth:      int(d[sourceOffset+75]),
-							KeyScaling: int(d[sourceOffset+76]),
+							Depth:      int(d[sourceOffset+84]),
+							KeyScaling: int(d[sourceOffset+85]) - 64,
 						},
 					},
 				}

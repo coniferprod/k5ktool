@@ -129,7 +129,14 @@ func listPatch(b bank.Bank, i int) {
 	fmt.Printf("portamento = %t, speed = %d\n", p.Common.PortamentoEnabled, p.Common.PortamentoSpeed)
 	fmt.Printf("Patch has %d sources\n", p.SourceCount)
 	for s := 0; s < p.Common.SourceCount; s++ {
-		fmt.Printf("S%d: %#v\n", s+1, p.Sources[s])
+		fmt.Printf("Source %d:\n", s+1)
+		source := p.Sources[s]
+
+		fmt.Printf("DCO: %s\n", source.Oscillator)
+		//fmt.Printf("S%d: %#v\n", s+1, p.Sources[s])
+		filter := source.Filter
+		fmt.Printf("    Filter: %s\n", filter)
+		fmt.Printf("    Filter envelope: depth = %d, %s\n", filter.EnvelopeDepth, filter.Envelope)
 	}
 }
 
