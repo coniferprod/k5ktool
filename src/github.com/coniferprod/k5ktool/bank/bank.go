@@ -93,6 +93,17 @@ func (r Reverb) String() string {
 		r.ReverbParam4)
 }
 
+func getReverb(data []byte) Reverb {
+	return Reverb{
+		ReverbType:   int(data[0]),
+		ReverbDryWet: int(data[1]),
+		ReverbParam1: int(data[2]),
+		ReverbParam2: int(data[3]),
+		ReverbParam3: int(data[4]),
+		ReverbParam4: int(data[5]),
+	}
+}
+
 // Effect stores the effect settings of a patch.
 type Effect struct {
 	EffectType   int
@@ -154,13 +165,243 @@ func (e Effect) Description() string {
 }
 
 func (e Effect) String() string {
-	return fmt.Sprintf("%s, depth = %d, param1 = %d, param2 = %d, param3 = %d, param4 = %d",
+	return fmt.Sprintf("%s, depth = %d, %s = %d, %s = %d, %s = %d, %s = %d",
 		e.Description(),
 		e.EffectDepth,
+		e.ParamDescription(1),
 		e.EffectParam1,
+		e.ParamDescription(2),
 		e.EffectParam2,
+		e.ParamDescription(3),
 		e.EffectParam3,
-		e.EffectParam3)
+		e.ParamDescription(4),
+		e.EffectParam4)
+}
+
+func (e Effect) ParamDescription(paramNumber int) string {
+	switch e.EffectType {
+	case 1, 2: // Early Reflection 1 and 2
+		switch paramNumber {
+		case 1:
+			return "Slope"
+		case 2:
+			return "Predelay Time"
+		case 3:
+			return "Feedback"
+		default:
+			return "?"
+		}
+	case 3, 4: // Tap Delay 1 and 2
+		switch paramNumber {
+		case 1:
+			return "Delay Time 1"
+		case 2:
+			return "Tap Level"
+		case 3:
+			return "Delay Time 2"
+		default:
+			return "?"
+		}
+	case 5: // Single Delay
+		switch paramNumber {
+		case 1:
+			return "Delay Time Fine"
+		case 2:
+			return "Delay Time Coarse"
+		case 3:
+			return "Feedback"
+		default:
+			return "?"
+		}
+	case 6: // Dual Delay
+		switch paramNumber {
+		case 1:
+			return "Delay Time Left"
+		case 2:
+			return "Feedback Left"
+		case 3:
+			return "Delay Time Right"
+		case 4:
+			return "Feedback Right"
+		default:
+			return "?"
+		}
+	case 7, 8: // Stereo Delay, Cross Delay
+		switch paramNumber {
+		case 1:
+			return "Delay Time"
+		case 2:
+			return "Feedback"
+		default:
+			return "?"
+		}
+	case 9, 11, 12, 23: // Auto Pan; Chorus 1; Chorus 2; Tremolo
+		switch paramNumber {
+		case 1:
+			return "Speed"
+		case 2:
+			return "Depth"
+		case 3:
+			return "Predelay Time"
+		case 4:
+			return "Wave"
+		default:
+			return "?"
+		}
+	case 10, 13, 14, 24: // Auto Pan & Delay; Chorus 1 & Delay; Chorus 2 & Delay; Tremolo & Delay
+		switch paramNumber {
+		case 1:
+			return "Speed"
+		case 2:
+			return "Depth"
+		case 3:
+			return "Delay Time"
+		case 4:
+			return "Wave"
+		default:
+			return "?"
+		}
+	case 15, 16, 25, 26: // Flanger 1 & 2, Phaser 1 & 2
+		switch paramNumber {
+		case 1:
+			return "Speed"
+		case 2:
+			return "Depth"
+		case 3:
+			return "Predelay Time"
+		case 4:
+			return "Feedback"
+		default:
+			return "?"
+		}
+	case 17, 18, 27, 28: // Flanger 1 & Delay; Flanger 2 & Delay, Phaser 1 & Delay, Phaser 2 & Delay
+		switch paramNumber {
+		case 1:
+			return "Speed"
+		case 2:
+			return "Depth"
+		case 3:
+			return "Delay Time"
+		case 4:
+			return "Feedback"
+		default:
+			return "?"
+		}
+	case 19: // Ensemble
+		switch paramNumber {
+		case 1:
+			return "Depth"
+		case 2:
+			return "Predelay Time"
+		default:
+			return "?"
+		}
+	case 20: // Ensemble & Delay
+		switch paramNumber {
+		case 1:
+			return "Depth"
+		case 2:
+			return "Delay Time"
+		default:
+			return "?"
+		}
+	case 21: // Celeste
+		switch paramNumber {
+		case 1:
+			return "Speed"
+		case 2:
+			return "Depth"
+		case 3:
+			return "Predelay Time"
+		default:
+			return "?"
+		}
+	case 22: // Celeste & Delay
+		switch paramNumber {
+		case 1:
+			return "Speed"
+		case 2:
+			return "Depth"
+		case 3:
+			return "Delay Time"
+		default:
+			return "?"
+		}
+	case 29: // Rotary
+		switch paramNumber {
+		case 1:
+			return "Slow Speed"
+		case 2:
+			return "Fast Speed"
+		case 3:
+			return "Acceleration"
+		case 4:
+			return "Slow/Fast Switch"
+		default:
+			return "?"
+		}
+	case 30: // Auto Wah
+		switch paramNumber {
+		case 1:
+			return "Sense"
+		case 2:
+			return "Frequency Bottom"
+		case 3:
+			return "Frequency Top"
+		case 4:
+			return "Resonance"
+		default:
+			return "?"
+		}
+	case 31: // Bandpass
+		switch paramNumber {
+		case 1:
+			return "Center Frequency"
+		case 2:
+			return "Bandwidth"
+		default:
+			return "?"
+		}
+	case 32, 33: // Exciter, Enhancer
+		switch paramNumber {
+		case 1:
+			return "EQ Low"
+		case 2:
+			return "EQ High"
+		case 3:
+			return "Intensity"
+		default:
+			return "?"
+		}
+	case 34, 35: // Overdrive, Distortion
+		switch paramNumber {
+		case 1:
+			return "EQ Low"
+		case 2:
+			return "EQ High"
+		case 3:
+			return "Output Level"
+		case 4:
+			return "Drive"
+		default:
+			return "?"
+		}
+	case 36, 37: // Overdrive & Delay; Distortion & Delay
+		switch paramNumber {
+		case 1:
+			return "EQ Low"
+		case 2:
+			return "EQ High"
+		case 3:
+			return "Delay Time"
+		case 4:
+			return "Drive"
+		default:
+			return "?"
+		}
+	default:
+		return "?"
+	}
 }
 
 func getEffect(data []byte) Effect {
@@ -494,12 +735,7 @@ func ParseBankFile(bs []byte) Bank {
 		polyphony := int(d[polyphonyOffset])
 		effectAlgorithm := int(d[effectAlgorithmOffset])
 
-		reverbType := int(d[reverbOffset])
-		reverbDryWet := int(d[reverbOffset+1])
-		reverbParam1 := int(d[reverbOffset+2])
-		reverbParam2 := int(d[reverbOffset+3])
-		reverbParam3 := int(d[reverbOffset+4])
-		reverbParam4 := int(d[reverbOffset+5])
+		reverb := getReverb(d[reverbOffset : reverbOffset+6])
 
 		effect1 := getEffect(d[effect1Offset : effect1Offset+6])
 		effect2 := getEffect(d[effect2Offset : effect2Offset+6])
@@ -669,16 +905,9 @@ func ParseBankFile(bs []byte) Bank {
 
 		// With struct embedding, the literal must follow the shape of the type declaration. (TGPL, p. 106)
 		c := Common{
-			Name:        name,
-			SourceCount: sourceCount,
-			Reverb: Reverb{
-				ReverbType:   reverbType,
-				ReverbDryWet: reverbDryWet,
-				ReverbParam1: reverbParam1,
-				ReverbParam2: reverbParam2,
-				ReverbParam3: reverbParam3,
-				ReverbParam4: reverbParam4,
-			},
+			Name:            name,
+			SourceCount:     sourceCount,
+			Reverb:          reverb,
 			Effect1:         effect1,
 			Effect2:         effect2,
 			Effect3:         effect3,

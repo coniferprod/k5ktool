@@ -119,7 +119,7 @@ func main() {
 func listPatch(b bank.Bank, i int) {
 	p := b.Patches[i-1]
 	fmt.Printf("%3d  %s\n", i, p.Common)
-	fmt.Println(p.Common.Reverb)
+	fmt.Printf("reverb: %s\n", p.Common.Reverb)
 	fmt.Printf("effect 1: %s\n", p.Common.Effect1)
 	fmt.Printf("effect 2: %s\n", p.Common.Effect1)
 	fmt.Printf("effect 3: %s\n", p.Common.Effect1)
