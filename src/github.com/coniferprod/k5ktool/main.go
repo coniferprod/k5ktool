@@ -121,10 +121,13 @@ func listPatch(b bank.Bank, i int) {
 	fmt.Printf("%3d  %s\n", i, p.Common)
 	fmt.Printf("reverb: %s\n", p.Common.Reverb)
 	fmt.Printf("effect 1: %s\n", p.Common.Effect1)
-	fmt.Printf("effect 2: %s\n", p.Common.Effect1)
-	fmt.Printf("effect 3: %s\n", p.Common.Effect1)
-	fmt.Printf("effect 4: %s\n", p.Common.Effect1)
-	fmt.Printf("GEQ: %s\n", p.Common.GEQ)
+	fmt.Printf("effect 2: %s\n", p.Common.Effect2)
+	fmt.Printf("effect 3: %s\n", p.Common.Effect3)
+	fmt.Printf("effect 4: %s\n", p.Common.Effect4)
+	fmt.Printf("GEQ = %s\n", p.Common.GEQ)
+	fmt.Printf("AM = %d\n", p.Common.AmplitudeModulation)
+	fmt.Printf("portamento = %t, speed = %d\n", p.Common.PortamentoEnabled, p.Common.PortamentoSpeed)
+	fmt.Printf("Patch has %d sources\n", p.SourceCount)
 	for s := 0; s < p.Common.SourceCount; s++ {
 		fmt.Printf("S%d: %#v\n", s+1, p.Sources[s])
 	}

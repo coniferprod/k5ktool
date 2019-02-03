@@ -2,10 +2,19 @@ package bank
 
 import "testing"
 
-func TestGetEffect(t *testing.T) {
-	data := []byte{11, 1, 2, 3, 4, 5}
+func TestGetEffectType(t *testing.T) {
+	data := []byte{0x11, 0x05, 0x50, 0x1F, 0x00, 0x00}
 	effect := getEffect(data)
-	if effect.EffectType != 0 {
-		t.Error("Effect type should be 0")
+	if effect.EffectType != 6 {
+		t.Error("Effect type should be 6")
+	}
+}
+
+func TestGetEffectName(t *testing.T) {
+	data := []byte{0x11, 0x05, 0x50, 0x1F, 0x00, 0x00}
+	effect := getEffect(data)
+	name := effect.Description()
+	if name != "Stereo Delay" {
+		t.Error("Effect name should be 'Stereo Delay'")
 	}
 }

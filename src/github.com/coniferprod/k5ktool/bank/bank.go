@@ -17,26 +17,6 @@ const (
 	NumEffects = 4
 )
 
-var reverbNames = []string{"Hall 1", "Hall 2", "Hall 3", "Room 1", "Room 2", "Room 3", "Plate 1", "Plate 2", "Plate 3", "Reverse", "Long Delay"}
-
-/*
-type ReverbType int
-
-const (
-	Hall1     ReverbType = 0
-	Hall2     ReverbType = 1
-	Hall3     ReverbType = 2
-	Room1     ReverbType = 3
-	Room2     ReverbType = 4
-	Room3     ReverbType = 5
-	Plate1    ReverbType = 6
-	Plate2    ReverbType = 7
-	Plate3    ReverbType = 8
-	Reverse   ReverbType = 9
-	LongDelay ReverbType = 10
-)
-*/
-
 // Reverb stores the reverb parameters of the patch.
 type Reverb struct {
 	ReverbType   int // 0...10
@@ -47,50 +27,34 @@ type Reverb struct {
 	ReverbParam4 int
 }
 
-// Description returns a textual description of the reverb.
-func (r Reverb) Description() string {
-	s := reverbNames[r.ReverbType]
-	return s
+type ReverbName struct {
+	Name           string
+	ParameterNames [4]string
 }
 
-// ParamDescription returns a textual description of the reverb parameter number i.
-func (r Reverb) ParamDescription(i int) string {
-	switch i {
-	case 1:
-		return "Dry/Wet 2"
-	case 2:
-		switch r.ReverbType {
-		case 9, 10:
-			return "Feedback"
-		default:
-			return "Reverb Time"
-		}
-	case 3:
-		switch r.ReverbType {
-		case 10:
-			return "Predelay Time"
-		default:
-			return "Delay Time"
-		}
-	case 4:
-		return "High Frequency Damping"
-	default:
-		return "Unknown"
-	}
+var reverbNames = []ReverbName{
+	/*  0 */ ReverbName{Name: "Hall 1", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  1 */ ReverbName{Name: "Hall 2", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  2 */ ReverbName{Name: "Hall 3", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  3 */ ReverbName{Name: "Room 1", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  4 */ ReverbName{Name: "Room 2", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  5 */ ReverbName{Name: "Room 3", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  6 */ ReverbName{Name: "Plate 1", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  7 */ ReverbName{Name: "Plate 2", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  8 */ ReverbName{Name: "Plate 3", ParameterNames: [4]string{"Dry/Wet 2", "Reverb Time", "Predelay Time", "High Frequency Damping"}},
+	/*  9 */ ReverbName{Name: "Reverse", ParameterNames: [4]string{"Dry/Wet 2", "Feedback", "Predelay Time", "High Frequency Damping"}},
+	/* 10 */ ReverbName{Name: "Long Delay", ParameterNames: [4]string{"Dry/Wet 2", "Feedback", "Delay Time", "High Frequency Damping"}},
 }
 
 func (r Reverb) String() string {
+	names := reverbNames[r.ReverbType]
 	return fmt.Sprintf("%s, %d%% wet, %s = %d, %s = %d, %s = %d, %s = %d",
-		r.Description(),
+		names.Name,
 		r.ReverbDryWet,
-		r.ParamDescription(1),
-		r.ReverbParam1,
-		r.ParamDescription(2),
-		r.ReverbParam2,
-		r.ParamDescription(3),
-		r.ReverbParam3,
-		r.ParamDescription(4),
-		r.ReverbParam4)
+		names.ParameterNames[0], r.ReverbParam1,
+		names.ParameterNames[1], r.ReverbParam2,
+		names.ParameterNames[2], r.ReverbParam3,
+		names.ParameterNames[3], r.ReverbParam4)
 }
 
 func getReverb(data []byte) Reverb {
@@ -114,44 +78,49 @@ type Effect struct {
 	EffectParam4 int
 }
 
-var effectNames = []string{
-	"Early Reflection 1",
-	"Early Reflection 2",
-	"Tap Delay 1",
-	"Tap Delay 2",
-	"Single Delay",
-	"Dual Delay",
-	"Stereo Delay",
-	"Cross Delay",
-	"Auto Pan",
-	"Auto Pan & Delay",
-	"Chorus 1",
-	"Chorus 2",
-	"Chorus 1 & Delay",
-	"Chorus 2 & Delay",
-	"Flanger 1",
-	"Flanger 2",
-	"Flanger 1 & Delay",
-	"Flanger 2 & Delay",
-	"Ensemble",
-	"Ensemble & Delay",
-	"Celeste",
-	"Celeste & Delay",
-	"Tremolo",
-	"Tremolo & Delay",
-	"Phaser 1",
-	"Phaser 2",
-	"Phaser 1 & Delay",
-	"Phaser 2 & Delay",
-	"Rotary",
-	"Autowah",
-	"Bandpass",
-	"Exciter",
-	"Enhancer",
-	"Overdrive",
-	"Distortion",
-	"Overdrive & Delay",
-	"Distortion & Delay",
+type EffectName struct {
+	Name           string
+	ParameterNames [4]string
+}
+
+var effectNames = []EffectName{
+	/*  0 */ EffectName{Name: "Early Reflection 1", ParameterNames: [4]string{"Slope", "Predelay Time", "Feedback", "?"}},
+	/*  1 */ EffectName{Name: "Early Reflection 2", ParameterNames: [4]string{"Slope", "Predelay Time", "Feedback", "?"}},
+	/*  2 */ EffectName{Name: "Tap Delay 1", ParameterNames: [4]string{"Delay Time 1", "Tap Level", "Delay Time 2", "?"}},
+	/*  3 */ EffectName{Name: "Tap Delay 2", ParameterNames: [4]string{"Delay Time 1", "Tap Level", "Delay Time 2", "?"}},
+	/*  4 */ EffectName{Name: "Single Delay", ParameterNames: [4]string{"Delay Time Fine", "Delay Time Coarse", "Feedback", "?"}},
+	/*  5 */ EffectName{Name: "Dual Delay", ParameterNames: [4]string{"Delay Time Left", "Feedback Left", "Delay Time Right", "Feedback Right"}},
+	/*  6 */ EffectName{Name: "Stereo Delay", ParameterNames: [4]string{"Delay Time", "Feedback", "?", "?"}},
+	/*  7 */ EffectName{Name: "Cross Delay", ParameterNames: [4]string{"Delay Time", "Feedback", "?", "?"}},
+	/*  8 */ EffectName{Name: "Auto Pan", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Wave"}},
+	/*  9 */ EffectName{Name: "Auto Pan & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Wave"}},
+	/* 10 */ EffectName{Name: "Chorus 1", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Wave"}},
+	/* 11 */ EffectName{Name: "Chorus 2", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Wave"}},
+	/* 12 */ EffectName{Name: "Chorus 1 & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Wave"}},
+	/* 13 */ EffectName{Name: "Chorus 2 & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Wave"}},
+	/* 14 */ EffectName{Name: "Flanger 1", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Feedback"}},
+	/* 15 */ EffectName{Name: "Flanger 2", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Feedback"}},
+	/* 16 */ EffectName{Name: "Flanger 1 & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Feedback"}},
+	/* 17 */ EffectName{Name: "Flanger 2 & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Feedback"}},
+	/* 18 */ EffectName{Name: "Ensemble", ParameterNames: [4]string{"Depth", "Predelay Time", "?", "?"}},
+	/* 19 */ EffectName{Name: "Ensemble & Delay", ParameterNames: [4]string{"Depth", "Delay Time", "?", "?"}},
+	/* 20 */ EffectName{Name: "Celeste", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "?"}},
+	/* 21 */ EffectName{Name: "Celeste & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "?"}},
+	/* 22 */ EffectName{Name: "Tremolo", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Wave"}},
+	/* 23 */ EffectName{Name: "Tremolo & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Wave"}},
+	/* 24 */ EffectName{Name: "Phaser 1", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Feedback"}},
+	/* 25 */ EffectName{Name: "Phaser 2", ParameterNames: [4]string{"Speed", "Depth", "Predelay Time", "Feedback"}},
+	/* 26 */ EffectName{Name: "Phaser 1 & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Feedback"}},
+	/* 27 */ EffectName{Name: "Phaser 2 & Delay", ParameterNames: [4]string{"Speed", "Depth", "Delay Time", "Feedback"}},
+	/* 28 */ EffectName{Name: "Rotary", ParameterNames: [4]string{"Slow Speed", "Fast Speed", "Acceleration", "Slow/Fast Switch"}},
+	/* 29 */ EffectName{Name: "Auto Wah", ParameterNames: [4]string{"Sense", "Frequency Bottom", "Frequency Top", "Resonance"}},
+	/* 30 */ EffectName{Name: "Bandpass", ParameterNames: [4]string{"Center Frequency", "Bandwidth", "?", "?"}},
+	/* 31 */ EffectName{Name: "Exciter", ParameterNames: [4]string{"EQ Low", "EQ High", "Intensity", "?"}},
+	/* 32 */ EffectName{Name: "Enhancer", ParameterNames: [4]string{"EQ Low", "EQ High", "Intensity", "?"}},
+	/* 33 */ EffectName{Name: "Overdrive", ParameterNames: [4]string{"EQ Low", "EQ High", "Output Level", "Drive"}},
+	/* 34 */ EffectName{Name: "Distortion", ParameterNames: [4]string{"EQ Low", "EQ High", "Output Level", "Drive"}},
+	/* 35 */ EffectName{Name: "Overdrive & Delay", ParameterNames: [4]string{"EQ Low", "EQ High", "Delay Time", "Drive"}},
+	/* 36 */ EffectName{Name: "Distortion & Delay", ParameterNames: [4]string{"EQ Low", "EQ High", "Delay Time", "Drive"}},
 }
 
 // There seems to be a conflict in the manual: there are 37 effect names,
@@ -160,248 +129,20 @@ var effectNames = []string{
 
 // Description returns a textual description of the effect.
 func (e Effect) Description() string {
-	s := effectNames[e.EffectType]
+	s := effectNames[e.EffectType].Name
 	return s
 }
 
 func (e Effect) String() string {
-	return fmt.Sprintf("%s, depth = %d, %s = %d, %s = %d, %s = %d, %s = %d",
-		e.Description(),
+	names := effectNames[e.EffectType]
+	return fmt.Sprintf("%02d %s, depth = %d, %s = %d, %s = %d, %s = %d, %s = %d",
+		e.EffectType,
+		names.Name,
 		e.EffectDepth,
-		e.ParamDescription(1),
-		e.EffectParam1,
-		e.ParamDescription(2),
-		e.EffectParam2,
-		e.ParamDescription(3),
-		e.EffectParam3,
-		e.ParamDescription(4),
-		e.EffectParam4)
-}
-
-func (e Effect) ParamDescription(paramNumber int) string {
-	switch e.EffectType {
-	case 1, 2: // Early Reflection 1 and 2
-		switch paramNumber {
-		case 1:
-			return "Slope"
-		case 2:
-			return "Predelay Time"
-		case 3:
-			return "Feedback"
-		default:
-			return "?"
-		}
-	case 3, 4: // Tap Delay 1 and 2
-		switch paramNumber {
-		case 1:
-			return "Delay Time 1"
-		case 2:
-			return "Tap Level"
-		case 3:
-			return "Delay Time 2"
-		default:
-			return "?"
-		}
-	case 5: // Single Delay
-		switch paramNumber {
-		case 1:
-			return "Delay Time Fine"
-		case 2:
-			return "Delay Time Coarse"
-		case 3:
-			return "Feedback"
-		default:
-			return "?"
-		}
-	case 6: // Dual Delay
-		switch paramNumber {
-		case 1:
-			return "Delay Time Left"
-		case 2:
-			return "Feedback Left"
-		case 3:
-			return "Delay Time Right"
-		case 4:
-			return "Feedback Right"
-		default:
-			return "?"
-		}
-	case 7, 8: // Stereo Delay, Cross Delay
-		switch paramNumber {
-		case 1:
-			return "Delay Time"
-		case 2:
-			return "Feedback"
-		default:
-			return "?"
-		}
-	case 9, 11, 12, 23: // Auto Pan; Chorus 1; Chorus 2; Tremolo
-		switch paramNumber {
-		case 1:
-			return "Speed"
-		case 2:
-			return "Depth"
-		case 3:
-			return "Predelay Time"
-		case 4:
-			return "Wave"
-		default:
-			return "?"
-		}
-	case 10, 13, 14, 24: // Auto Pan & Delay; Chorus 1 & Delay; Chorus 2 & Delay; Tremolo & Delay
-		switch paramNumber {
-		case 1:
-			return "Speed"
-		case 2:
-			return "Depth"
-		case 3:
-			return "Delay Time"
-		case 4:
-			return "Wave"
-		default:
-			return "?"
-		}
-	case 15, 16, 25, 26: // Flanger 1 & 2, Phaser 1 & 2
-		switch paramNumber {
-		case 1:
-			return "Speed"
-		case 2:
-			return "Depth"
-		case 3:
-			return "Predelay Time"
-		case 4:
-			return "Feedback"
-		default:
-			return "?"
-		}
-	case 17, 18, 27, 28: // Flanger 1 & Delay; Flanger 2 & Delay, Phaser 1 & Delay, Phaser 2 & Delay
-		switch paramNumber {
-		case 1:
-			return "Speed"
-		case 2:
-			return "Depth"
-		case 3:
-			return "Delay Time"
-		case 4:
-			return "Feedback"
-		default:
-			return "?"
-		}
-	case 19: // Ensemble
-		switch paramNumber {
-		case 1:
-			return "Depth"
-		case 2:
-			return "Predelay Time"
-		default:
-			return "?"
-		}
-	case 20: // Ensemble & Delay
-		switch paramNumber {
-		case 1:
-			return "Depth"
-		case 2:
-			return "Delay Time"
-		default:
-			return "?"
-		}
-	case 21: // Celeste
-		switch paramNumber {
-		case 1:
-			return "Speed"
-		case 2:
-			return "Depth"
-		case 3:
-			return "Predelay Time"
-		default:
-			return "?"
-		}
-	case 22: // Celeste & Delay
-		switch paramNumber {
-		case 1:
-			return "Speed"
-		case 2:
-			return "Depth"
-		case 3:
-			return "Delay Time"
-		default:
-			return "?"
-		}
-	case 29: // Rotary
-		switch paramNumber {
-		case 1:
-			return "Slow Speed"
-		case 2:
-			return "Fast Speed"
-		case 3:
-			return "Acceleration"
-		case 4:
-			return "Slow/Fast Switch"
-		default:
-			return "?"
-		}
-	case 30: // Auto Wah
-		switch paramNumber {
-		case 1:
-			return "Sense"
-		case 2:
-			return "Frequency Bottom"
-		case 3:
-			return "Frequency Top"
-		case 4:
-			return "Resonance"
-		default:
-			return "?"
-		}
-	case 31: // Bandpass
-		switch paramNumber {
-		case 1:
-			return "Center Frequency"
-		case 2:
-			return "Bandwidth"
-		default:
-			return "?"
-		}
-	case 32, 33: // Exciter, Enhancer
-		switch paramNumber {
-		case 1:
-			return "EQ Low"
-		case 2:
-			return "EQ High"
-		case 3:
-			return "Intensity"
-		default:
-			return "?"
-		}
-	case 34, 35: // Overdrive, Distortion
-		switch paramNumber {
-		case 1:
-			return "EQ Low"
-		case 2:
-			return "EQ High"
-		case 3:
-			return "Output Level"
-		case 4:
-			return "Drive"
-		default:
-			return "?"
-		}
-	case 36, 37: // Overdrive & Delay; Distortion & Delay
-		switch paramNumber {
-		case 1:
-			return "EQ Low"
-		case 2:
-			return "EQ High"
-		case 3:
-			return "Delay Time"
-		case 4:
-			return "Drive"
-		default:
-			return "?"
-		}
-	default:
-		return "?"
-	}
+		names.ParameterNames[0], e.EffectParam1,
+		names.ParameterNames[1], e.EffectParam2,
+		names.ParameterNames[2], e.EffectParam3,
+		names.ParameterNames[3], e.EffectParam4)
 }
 
 func getEffect(data []byte) Effect {
@@ -429,6 +170,18 @@ type GEQ struct {
 	Freq5 int
 	Freq6 int
 	Freq7 int
+}
+
+func getGEQ(d []byte) GEQ {
+	return GEQ{
+		Freq1: int(d[0] - 64),
+		Freq2: int(d[1] - 64),
+		Freq3: int(d[2] - 64),
+		Freq4: int(d[3] - 64),
+		Freq5: int(d[4] - 64),
+		Freq6: int(d[5] - 64),
+		Freq7: int(d[6] - 64),
+	}
 }
 
 func (g GEQ) String() string {
@@ -584,6 +337,8 @@ type Common struct {
 
 	// AM: Selects sources for Amplitude Modulation. One source can be set to modulate an adjacent source, i.e., 1>2.
 	AmplitudeModulation int
+	PortamentoEnabled   bool
+	PortamentoSpeed     int
 }
 
 func (c Common) String() string {
@@ -623,6 +378,7 @@ const (
 	effect3Offset         = 20
 	effect4Offset         = 26
 	gEQOffset             = 32
+	portamentoOffset      = 60
 )
 
 type patchPtr struct {
@@ -733,7 +489,7 @@ func ParseBankFile(bs []byte) Bank {
 
 		volume := int(d[volumeOffset])
 		polyphony := int(d[polyphonyOffset])
-		effectAlgorithm := int(d[effectAlgorithmOffset])
+		effectAlgorithm := int(d[effectAlgorithmOffset]) + 1 // value is 0...3, scale to 1...4
 
 		reverb := getReverb(d[reverbOffset : reverbOffset+6])
 
@@ -742,15 +498,10 @@ func ParseBankFile(bs []byte) Bank {
 		effect3 := getEffect(d[effect3Offset : effect3Offset+6])
 		effect4 := getEffect(d[effect4Offset : effect4Offset+6])
 
-		geq := GEQ{
-			Freq1: int(d[gEQOffset] - 64),
-			Freq2: int(d[gEQOffset+1] - 64),
-			Freq3: int(d[gEQOffset+2] - 64),
-			Freq4: int(d[gEQOffset+3] - 64),
-			Freq5: int(d[gEQOffset+4] - 64),
-			Freq6: int(d[gEQOffset+5] - 64),
-			Freq7: int(d[gEQOffset+6] - 64),
-		}
+		geq := getGEQ(d[gEQOffset : gEQOffset+7])
+
+		portamentoFlag := int(d[portamentoOffset]) == 1
+		portamentoSpeed := int(d[portamentoOffset+1])
 
 		sourceOffset := commonDataSize // source data starts after common data
 		var sources [numSources]Source
@@ -905,17 +656,19 @@ func ParseBankFile(bs []byte) Bank {
 
 		// With struct embedding, the literal must follow the shape of the type declaration. (TGPL, p. 106)
 		c := Common{
-			Name:            name,
-			SourceCount:     sourceCount,
-			Reverb:          reverb,
-			Effect1:         effect1,
-			Effect2:         effect2,
-			Effect3:         effect3,
-			Effect4:         effect4,
-			Volume:          volume,
-			Polyphony:       polyphony,
-			EffectAlgorithm: effectAlgorithm,
-			GEQ:             geq,
+			Name:              name,
+			SourceCount:       sourceCount,
+			Reverb:            reverb,
+			Effect1:           effect1,
+			Effect2:           effect2,
+			Effect3:           effect3,
+			Effect4:           effect4,
+			Volume:            volume,
+			Polyphony:         polyphony,
+			EffectAlgorithm:   effectAlgorithm,
+			GEQ:               geq,
+			PortamentoEnabled: portamentoFlag,
+			PortamentoSpeed:   portamentoSpeed,
 		}
 
 		patch := Patch{Common: c, Sources: sources}
