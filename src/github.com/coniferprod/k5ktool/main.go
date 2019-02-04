@@ -99,11 +99,10 @@ func main() {
 
 	switch command {
 	case "list":
-		fmt.Println("List patches in the bank")
 		if patchNumber == 0 {
 			listAllPatches(b)
 		} else {
-			listPatch(b, patchNumber)
+			listPatch(b, patchNumber-1)
 		}
 
 	case "convert":
@@ -117,8 +116,8 @@ func main() {
 }
 
 func listPatch(b bank.Bank, i int) {
-	p := b.Patches[i-1]
-	fmt.Printf("%3d  %s\n", i, p.Common)
+	p := b.Patches[i]
+	fmt.Printf("%3d  %s\n", i+1, p.Common)
 	fmt.Printf("reverb: %s\n", p.Common.Reverb)
 	fmt.Printf("effect 1: %s\n", p.Common.Effect1)
 	fmt.Printf("effect 2: %s\n", p.Common.Effect2)
@@ -141,6 +140,8 @@ func listPatch(b bank.Bank, i int) {
 }
 
 func listAllPatches(b bank.Bank) {
+	fmt.Println("List all patches in the bank")
+
 	for i := 0; i < bank.NumPatches; i++ {
 		listPatch(b, i)
 		fmt.Println()
