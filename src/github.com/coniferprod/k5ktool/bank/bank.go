@@ -60,7 +60,7 @@ func (r Reverb) String() string {
 		names.ParameterNames[3], r.ReverbParam4)
 }
 
-func getReverb(data []byte) Reverb {
+func newReverb(data []byte) Reverb {
 	return Reverb{
 		ReverbType:   int(data[0]),
 		ReverbDryWet: int(data[1]),
@@ -148,7 +148,7 @@ func (e Effect) String() string {
 		names.ParameterNames[3], e.EffectParam4)
 }
 
-func getEffect(data []byte) Effect {
+func newEffect(data []byte) Effect {
 	effectType := 0
 	if data[0] != 0 {
 		effectType = int(data[0]) - 11
@@ -175,7 +175,7 @@ type GEQ struct {
 	Freq7 int
 }
 
-func getGEQ(d []byte) GEQ {
+func newGEQ(d []byte) GEQ {
 	return GEQ{
 		Freq1: int(d[0] - 64),
 		Freq2: int(d[1] - 64),
@@ -782,7 +782,7 @@ type Source struct {
 	LFO               LFOSettings
 }
 
-func getSource(d []byte) Source {
+func newSource(d []byte) Source {
 	waveKitMSB := int(d[28])
 	waveKitLSB := int(d[29])
 	waveKitNumber := waveKitMSB*128 + waveKitLSB
@@ -1108,14 +1108,14 @@ func ParseBankFile(bs []byte) Bank {
 		polyphony := int(d[polyphonyOffset])
 		effectAlgorithm := int(d[effectAlgorithmOffset]) + 1 // value is 0...3, scale to 1...4
 
-		reverb := getReverb(d[reverbOffset : reverbOffset+6])
+		reverb := newReverb(d[reverbOffset : reverbOffset+6])
 
-		effect1 := getEffect(d[effect1Offset : effect1Offset+6])
-		effect2 := getEffect(d[effect2Offset : effect2Offset+6])
-		effect3 := getEffect(d[effect3Offset : effect3Offset+6])
-		effect4 := getEffect(d[effect4Offset : effect4Offset+6])
+		effect1 := newEffect(d[effect1Offset : effect1Offset+6])
+		effect2 := newEffect(d[effect2Offset : effect2Offset+6])
+		effect3 := newEffect(d[effect3Offset : effect3Offset+6])
+		effect4 := newEffect(d[effect4Offset : effect4Offset+6])
 
-		geq := getGEQ(d[gEQOffset : gEQOffset+7])
+		geq := newGEQ(d[gEQOffset : gEQOffset+7])
 
 		portamentoFlag := int(d[portamentoOffset]) == 1
 		portamentoSpeed := int(d[portamentoOffset+1])
@@ -1124,7 +1124,7 @@ func ParseBankFile(bs []byte) Bank {
 		var sources [numSources]Source
 		for sourceIndex := 0; sourceIndex < numSources; sourceIndex++ {
 			if sourceIndex < sourceCount {
-				sources[sourceIndex] = getSource(d[sourceOffset : sourceOffset+sourceDataSize])
+				sources[sourceIndex] = newSource(d[sourceOffset : sourceOffset+sourceDataSize])
 				sourceOffset += sourceDataSize
 			}
 		}
