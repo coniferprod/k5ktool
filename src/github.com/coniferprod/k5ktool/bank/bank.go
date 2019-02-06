@@ -689,16 +689,22 @@ type LFOSettings struct {
 }
 
 type EnvelopeSegment struct {
-	Rate    int
-	Level   int
-	Looping bool
+	Rate  int
+	Level int
+}
+
+type MORFHarmonicEnvelope struct {
+	Time1    int
+	Time2    int
+	Time3    int
+	Time4    int
+	LoopType int
 }
 
 type HarmonicEnvelope struct {
-	Segment1 EnvelopeSegment
-	Segment2 EnvelopeSegment
-	Segment3 EnvelopeSegment
-	Segment4 EnvelopeSegment
+	Segments [4]EnvelopeSegment
+	SRSFlag  bool
+	TRTFlag  bool
 }
 
 type HarmonicCopyParameters struct {
@@ -710,7 +716,7 @@ type HarmonicParameters struct {
 	TotalGain int
 
 	// Non-MORF parameters
-	HarmonicGroup    bool
+	HarmonicGroup    int
 	KeyScalingToGain int
 	VelocityCurve    int
 	VelocityDepth    int
@@ -723,8 +729,7 @@ type HarmonicParameters struct {
 	HarmonicCopy4 HarmonicCopyParameters
 
 	// Harmonic envelope
-	Envelope EnvelopeSegment
-	LoopType int
+	Envelope MORFHarmonicEnvelope
 }
 
 type LFOParameters struct {
@@ -757,7 +762,108 @@ type AdditiveKit struct {
 	LowHarmonics      [64]byte
 	HighHarmonics     [64]byte
 	FormantFilterData [128]byte
-	HarmonicEnvelopes [64]HarmonicEnvelope
+	HarmonicEnvelopes [numHarmonics]HarmonicEnvelope
+}
+
+func newAdditiveKit(d []byte) AdditiveKit {
+	kit := AdditiveKit{
+		MorfFlag: d[0] == 1,
+		Harmonics: HarmonicParameters{
+			TotalGain:        int(d[1]),
+			HarmonicGroup:    int(d[2]),
+			KeyScalingToGain: int(d[3]) - 64,
+			VelocityCurve:    int(d[4]), // 1...11
+			VelocityDepth:    int(d[5]), // 0...127
+			HarmonicCopy1: HarmonicCopyParameters{
+				PatchNumber:  int(d[6]),
+				SourceNumber: int(d[7]),
+			},
+			HarmonicCopy2: HarmonicCopyParameters{
+				PatchNumber:  int(d[8]),
+				SourceNumber: int(d[9]),
+			},
+			HarmonicCopy3: HarmonicCopyParameters{
+				PatchNumber:  int(d[10]),
+				SourceNumber: int(d[11]),
+			},
+			HarmonicCopy4: HarmonicCopyParameters{
+				PatchNumber:  int(d[12]),
+				SourceNumber: int(d[13]),
+			},
+			Envelope: MORFHarmonicEnvelope{
+				Time1:    int(d[14]),
+				Time2:    int(d[15]),
+				Time3:    int(d[16]),
+				Time4:    int(d[17]),
+				LoopType: int(d[18]),
+			},
+		},
+		Formant: FormantParameters{
+			Bias:          int(d[19]) - 64,
+			EnvLFOSel:     int(d[20]) == 1,
+			EnvelopeDepth: int(d[21]) - 64,
+			Attack: EnvelopeSegment{
+				Rate:  int(d[22]),
+				Level: int(d[23]) - 64,
+			},
+			Decay1: EnvelopeSegment{
+				Rate:  int(d[24]),
+				Level: int(d[25]) - 64,
+			},
+			Decay2: EnvelopeSegment{
+				Rate:  int(d[26]),
+				Level: int(d[27]) - 64,
+			},
+			Release: EnvelopeSegment{
+				Rate:  int(d[28]),
+				Level: int(d[29]) - 64,
+			},
+			LoopType:            int(d[30]),
+			VelocitySensitivity: int(d[31]) - 64,
+			KeyScaling:          int(d[32]) - 64,
+			LFO: LFOParameters{
+				Speed: int(d[33]),
+				Shape: int(d[34]),
+				Depth: int(d[35]),
+			},
+		},
+	}
+
+	// Need to separately copy slices into arrays
+	copy(kit.LowHarmonics[:], d[36:100])
+	copy(kit.HighHarmonics[:], d[100:164])
+	copy(kit.FormantFilterData[:], d[164:292])
+
+	offset := 292
+	for i := 0; i < numHarmonics; i++ {
+		segments := [4]EnvelopeSegment{
+			EnvelopeSegment{
+				Rate:  int(d[offset]),
+				Level: int(d[offset+1]),
+			},
+			EnvelopeSegment{
+				Rate:  int(d[offset+2]),
+				Level: int(d[offset+3] & 0x3F),
+			},
+			EnvelopeSegment{
+				Rate:  int(d[offset+4]),
+				Level: int(d[offset+5] & 0x3F),
+			},
+			EnvelopeSegment{
+				Rate:  int(d[offset+6]),
+				Level: int(d[offset+7]),
+			},
+		}
+		envelope := HarmonicEnvelope{
+			Segments: segments,
+			SRSFlag:  ((d[offset+3] >> 6) & 0x01) == 1,
+			TRTFlag:  ((d[offset+5] >> 6) & 0x01) == 1,
+		}
+
+		kit.HarmonicEnvelopes[i] = envelope
+	}
+
+	return kit
 }
 
 // Source represents the data of one of the up to six patch sources.
@@ -966,6 +1072,7 @@ func (c Common) String() string {
 type Patch struct {
 	Common
 	Sources [numSources]Source
+	Kits    []AdditiveKit
 }
 
 // Bank contains 128 patches.
@@ -984,6 +1091,7 @@ const (
 	nameOffset          = 40
 	numGEQBands         = 7
 	numEffects          = 4
+	numHarmonics        = 64
 
 	commonChecksumOffset  = 0
 	effectAlgorithmOffset = 1
@@ -1147,6 +1255,17 @@ func ParseBankFile(bs []byte) Bank {
 		}
 
 		patch := Patch{Common: c, Sources: sources}
+
+		// Now sourceOffset should be at the start of the additive wave kits
+		for i := 0; i < pp.additiveWaveKitCount(); i++ {
+			//additiveChecksum := d[sourceOffset]
+			sourceOffset++
+			additiveData := d[sourceOffset : sourceOffset+additiveWaveKitSize]
+			kit := newAdditiveKit(additiveData)
+			patch.Kits = append(patch.Kits, kit)
+			sourceOffset += additiveWaveKitSize
+		}
+
 		b.Patches[pp.index] = patch
 	}
 
