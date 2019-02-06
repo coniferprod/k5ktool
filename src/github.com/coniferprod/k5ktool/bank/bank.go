@@ -209,7 +209,7 @@ type EnvelopeSettings struct {
 }
 
 func (e EnvelopeSettings) String() string {
-	return fmt.Sprintf("Atk T = %d, Dcy1 T = %d, Dcy1 L = %d, Dcy2 T = %d, Dcy2 L = %d, Rels T = %d",
+	return fmt.Sprintf("A T%d, D1 T%d L%d, D2 T%d L%d, R T%d",
 		e.AttackTime, e.Decay1Time, e.Decay1Level, e.Decay2Time, e.Decay2Level, e.ReleaseTime)
 }
 
@@ -637,11 +637,11 @@ func (f FilterSettings) String() string {
 		filterState = "bypassed"
 	}
 
-	filterMode := "lowpass"
+	filterMode := "LP"
 	if f.Mode == 1 {
-		filterMode = "highpass"
+		filterMode = "HP"
 	}
-	return fmt.Sprintf("state = %s, mode = %s, level = %d, cutoff = %d, velocity curve = %d, resonance = %d, KS to Cut = %d, Velo to Cut = %d",
+	return fmt.Sprintf("%s, %s, L%d, cutoff = %d, velocity curve = %d, resonance = %d, KS to Cut = %d, Velo to Cut = %d",
 		filterState, filterMode, f.Level, f.Cutoff, f.VelocityCurve, f.Resonance, f.CutoffKeyScalingDepth, f.CutoffVelocityDepth)
 }
 
@@ -693,6 +693,10 @@ type EnvelopeSegment struct {
 	Level int
 }
 
+func (e EnvelopeSegment) String() string {
+	return fmt.Sprintf("R%d L%d", e.Rate, e.Level)
+}
+
 type MORFHarmonicEnvelope struct {
 	Time1    int
 	Time2    int
@@ -705,6 +709,18 @@ type HarmonicEnvelope struct {
 	Segments [4]EnvelopeSegment
 	SRSFlag  bool
 	TRTFlag  bool
+}
+
+type LoopingEnvelope struct {
+	Attack   EnvelopeSegment
+	Decay1   EnvelopeSegment
+	Decay2   EnvelopeSegment
+	Release  EnvelopeSegment
+	LoopType int
+}
+
+func (e LoopingEnvelope) String() string {
+	return fmt.Sprintf("A: %s, D1: %s, D2: %s, R: %s", e.Attack, e.Decay1, e.Decay2, e.Release)
 }
 
 type HarmonicCopyParameters struct {
@@ -738,21 +754,42 @@ type LFOParameters struct {
 	Depth int
 }
 
+func (l LFOParameters) String() string {
+	shapeString := ""
+	switch l.Shape {
+	case 0:
+		shapeString = "TRI"
+	case 1:
+		shapeString = "SAW"
+	case 2:
+		shapeString = "RND"
+	default:
+		shapeString = "?"
+	}
+	return fmt.Sprintf("S/%d %s D/%d", l.Speed, shapeString, l.Depth)
+}
+
 type FormantParameters struct {
 	Bias      int  // (-63)1 ... (+63)127
 	EnvLFOSel bool // false = env, true = LFO
 
 	// Envelope parameters
-	EnvelopeDepth       int             // (-63)1 ... (+63)127
-	Attack              EnvelopeSegment // rate = 0...127, level = (-63)1 ... (+63)127
-	Decay1              EnvelopeSegment
-	Decay2              EnvelopeSegment
-	Release             EnvelopeSegment
-	LoopType            int // 0 = off, 1 = LP1, 2 = LP2
+	EnvelopeDepth int
+	Envelope      LoopingEnvelope
+
 	VelocitySensitivity int // (-63)1 ... (+63)127
 	KeyScaling          int // (-63)1 ... (+63)127
 
 	LFO LFOParameters // speed = 0...127; shape = 0/TRI, 1=SAW, 2=RND; depth = 0...63
+}
+
+func (f FormantParameters) String() string {
+	envLFOSelString := "ENV"
+	if f.EnvLFOSel {
+		envLFOSelString = "LFO"
+	}
+	return fmt.Sprintf("bias = %d, %s, envelope = %s (depth=%d), vel.sens = %d, KS = %d, LFO = %s",
+		f.Bias, envLFOSelString, f.Envelope, f.EnvelopeDepth, f.VelocitySensitivity, f.KeyScaling, f.LFO)
 }
 
 type AdditiveKit struct {
@@ -802,23 +839,25 @@ func newAdditiveKit(d []byte) AdditiveKit {
 			Bias:          int(d[19]) - 64,
 			EnvLFOSel:     int(d[20]) == 1,
 			EnvelopeDepth: int(d[21]) - 64,
-			Attack: EnvelopeSegment{
-				Rate:  int(d[22]),
-				Level: int(d[23]) - 64,
+			Envelope: LoopingEnvelope{
+				Attack: EnvelopeSegment{
+					Rate:  int(d[22]),
+					Level: int(d[23]) - 64,
+				},
+				Decay1: EnvelopeSegment{
+					Rate:  int(d[24]),
+					Level: int(d[25]) - 64,
+				},
+				Decay2: EnvelopeSegment{
+					Rate:  int(d[26]),
+					Level: int(d[27]) - 64,
+				},
+				Release: EnvelopeSegment{
+					Rate:  int(d[28]),
+					Level: int(d[29]) - 64,
+				},
+				LoopType: int(d[30]),
 			},
-			Decay1: EnvelopeSegment{
-				Rate:  int(d[24]),
-				Level: int(d[25]) - 64,
-			},
-			Decay2: EnvelopeSegment{
-				Rate:  int(d[26]),
-				Level: int(d[27]) - 64,
-			},
-			Release: EnvelopeSegment{
-				Rate:  int(d[28]),
-				Level: int(d[29]) - 64,
-			},
-			LoopType:            int(d[30]),
 			VelocitySensitivity: int(d[31]) - 64,
 			KeyScaling:          int(d[32]) - 64,
 			LFO: LFOParameters{
@@ -864,6 +903,10 @@ func newAdditiveKit(d []byte) AdditiveKit {
 	}
 
 	return kit
+}
+
+func (k AdditiveKit) String() string {
+	return fmt.Sprintf("%s", k.Formant)
 }
 
 // Source represents the data of one of the up to six patch sources.

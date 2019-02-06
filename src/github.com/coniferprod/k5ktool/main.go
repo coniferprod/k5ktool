@@ -137,6 +137,10 @@ func listPatch(b bank.Bank, i int) {
 		fmt.Printf("    Filter: %s\n", filter)
 		fmt.Printf("    Filter envelope: depth = %d, %s\n", filter.EnvelopeDepth, filter.Envelope)
 	}
+	for k := 0; k < len(p.Kits); k++ {
+		fmt.Printf("Additive Kit #%d:\n", k+1)
+		fmt.Printf("%s\n", p.Kits[k])
+	}
 }
 
 func listAllPatches(b bank.Bank) {
