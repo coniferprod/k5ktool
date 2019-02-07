@@ -81,7 +81,7 @@ func main() {
 
 	extension := s.ToLower(filepath.Ext(inputFileName))
 
-	fmt.Fprintf(os.Stdout, "command = '%v', input file name = '%v', extension = '%v', patchNumber = %d\n", command, inputFileName, extension, patchNumber)
+	//fmt.Fprintf(os.Stdout, "command = '%v', input file name = '%v', extension = '%v', patchNumber = %d\n", command, inputFileName, extension, patchNumber)
 
 	data, err := ioutil.ReadFile(inputFileName) // read the whole file into memory
 	if err != nil {
@@ -120,18 +120,19 @@ func main() {
 }
 
 func printName(p bank.Patch, i int) {
-	fmt.Printf("%3d  %s\n", i+1, p.Common)
+	fmt.Printf("%3d  %s\n", i+1, p.Common.Name)
 }
 
 func printCommon(p bank.Patch) {
-	fmt.Printf("reverb: %s\n", p.Common.Reverb)
-	fmt.Printf("effect 1: %s\n", p.Common.Effect1)
-	fmt.Printf("effect 2: %s\n", p.Common.Effect2)
-	fmt.Printf("effect 3: %s\n", p.Common.Effect3)
-	fmt.Printf("effect 4: %s\n", p.Common.Effect4)
-	fmt.Printf("GEQ = %s\n", p.Common.GEQ)
-	fmt.Printf("AM = %d\n", p.Common.AmplitudeModulation)
-	fmt.Printf("portamento = %t, speed = %d\n", p.Common.PortamentoEnabled, p.Common.PortamentoSpeed)
+	fmt.Printf("%s\n", p.Common)
+	fmt.Printf("Reverb: %s\n", p.Common.Reverb)
+	fmt.Printf("Effect 1: %s\n", p.Common.Effect1)
+	fmt.Printf("Effect 2: %s\n", p.Common.Effect2)
+	fmt.Printf("Effect 3: %s\n", p.Common.Effect3)
+	fmt.Printf("Effect 4: %s\n", p.Common.Effect4)
+	fmt.Printf("GEQ: %s\n", p.Common.GEQ)
+	fmt.Printf("AM: %d\n", p.Common.AmplitudeModulation)
+	fmt.Printf("Portamento: %t  Speed: %d\n", p.Common.PortamentoEnabled, p.Common.PortamentoSpeed)
 }
 
 func printSources(p bank.Patch) {
@@ -175,10 +176,8 @@ func listPatch(b bank.Bank, i int, sections string) {
 }
 
 func listAllPatches(b bank.Bank, sections string) {
-	fmt.Println("List all patches in the bank")
-
 	for i := 0; i < bank.NumPatches; i++ {
 		listPatch(b, i, sections)
-		fmt.Println()
+		//fmt.Println()
 	}
 }

@@ -906,7 +906,7 @@ func newAdditiveKit(d []byte) AdditiveKit {
 }
 
 func (k AdditiveKit) String() string {
-	return fmt.Sprintf("%s", k.Formant)
+	return fmt.Sprintf("MORF = %t, %s", k.MorfFlag, k.Formant)
 }
 
 // Source represents the data of one of the up to six patch sources.
@@ -1108,7 +1108,7 @@ type Common struct {
 }
 
 func (c Common) String() string {
-	return fmt.Sprintf("%8s  vol=%3d  poly=%d\nnumber of sources = %d\neffect algorithm = %d", c.Name, c.Volume, c.Polyphony, c.SourceCount, c.EffectAlgorithm)
+	return fmt.Sprintf("Volume: %3d  Polyphony: %d  Sources: %d  Effect algorithm: %d", c.Volume, c.Polyphony, c.SourceCount, c.EffectAlgorithm)
 }
 
 // Patch represents the parameters of a sound.
