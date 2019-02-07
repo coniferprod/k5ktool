@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+	s "strings"
 
 	"github.com/coniferprod/k5ktool/bank"
 )
@@ -19,7 +19,8 @@ var (
 	usage = "Usage: k5ktool <command> -i <infile> -p <patchnum>\n" +
 		"<command> = list or convert\n" +
 		"<infile> = input file (.kaa or .syx)\n" +
-		"<patchnum> = patch number in bank (1...128, default is all)"
+		"<patchnum> = patch number in bank (1...128, default is all)" +
+		"<sections> = which patch sections to show (default is 'ncsa' for all (n = name, c = common, s = sources, a = additive kits))"
 )
 
 // Guidance for command line argument handling:
@@ -28,6 +29,7 @@ var (
 func main() {
 	listCommand := flag.NewFlagSet("list", flag.ExitOnError)
 	patchNumberPtr := listCommand.Int("p", 0, "Patch number 1 – 128 (default is all patches in the bank)")
+	sectionsPtr := listCommand.String("s", "ncsa", "What patch sections to show (default is 'ncsa' for all)")
 
 	convertCommand := flag.NewFlagSet("convert", flag.ExitOnError)
 
@@ -52,7 +54,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	patchNumber := 0 // default to 0 = all patches
+	patchNumber := 0   // default to 0 = all patches
+	sections := "ncsa" // default to showing all information about a patch
 
 	if listCommand.Parsed() {
 		if *listInputFileName == "" {
@@ -63,6 +66,7 @@ func main() {
 		command = "list"
 		inputFileName = *listInputFileName
 		patchNumber = *patchNumberPtr
+		sections = *sectionsPtr
 	}
 
 	if convertCommand.Parsed() {
@@ -75,7 +79,7 @@ func main() {
 		inputFileName = *convertInputFileName
 	}
 
-	extension := strings.ToLower(filepath.Ext(inputFileName))
+	extension := s.ToLower(filepath.Ext(inputFileName))
 
 	fmt.Fprintf(os.Stdout, "command = '%v', input file name = '%v', extension = '%v', patchNumber = %d\n", command, inputFileName, extension, patchNumber)
 
@@ -100,9 +104,9 @@ func main() {
 	switch command {
 	case "list":
 		if patchNumber == 0 {
-			listAllPatches(b)
+			listAllPatches(b, sections)
 		} else {
-			listPatch(b, patchNumber-1)
+			listPatch(b, patchNumber-1, sections)
 		}
 
 	case "convert":
@@ -115,9 +119,11 @@ func main() {
 	}
 }
 
-func listPatch(b bank.Bank, i int) {
-	p := b.Patches[i]
+func printName(p bank.Patch, i int) {
 	fmt.Printf("%3d  %s\n", i+1, p.Common)
+}
+
+func printCommon(p bank.Patch) {
 	fmt.Printf("reverb: %s\n", p.Common.Reverb)
 	fmt.Printf("effect 1: %s\n", p.Common.Effect1)
 	fmt.Printf("effect 2: %s\n", p.Common.Effect2)
@@ -126,6 +132,9 @@ func listPatch(b bank.Bank, i int) {
 	fmt.Printf("GEQ = %s\n", p.Common.GEQ)
 	fmt.Printf("AM = %d\n", p.Common.AmplitudeModulation)
 	fmt.Printf("portamento = %t, speed = %d\n", p.Common.PortamentoEnabled, p.Common.PortamentoSpeed)
+}
+
+func printSources(p bank.Patch) {
 	fmt.Printf("Patch has %d sources\n", p.SourceCount)
 	for s := 0; s < p.Common.SourceCount; s++ {
 		fmt.Printf("Source %d:\n", s+1)
@@ -137,17 +146,39 @@ func listPatch(b bank.Bank, i int) {
 		fmt.Printf("    Filter: %s\n", filter)
 		fmt.Printf("    Filter envelope: depth = %d, %s\n", filter.EnvelopeDepth, filter.Envelope)
 	}
+}
+
+func printAdditiveKits(p bank.Patch) {
 	for k := 0; k < len(p.Kits); k++ {
 		fmt.Printf("Additive Kit #%d:\n", k+1)
 		fmt.Printf("%s\n", p.Kits[k])
 	}
 }
 
-func listAllPatches(b bank.Bank) {
+func listPatch(b bank.Bank, i int, sections string) {
+	p := b.Patches[i]
+	if s.Contains(sections, "n") {
+		printName(p, i)
+	}
+
+	if s.Contains(sections, "c") {
+		printCommon(p)
+	}
+
+	if s.Contains(sections, "s") {
+		printSources(p)
+	}
+
+	if s.Contains(sections, "a") {
+		printAdditiveKits(p)
+	}
+}
+
+func listAllPatches(b bank.Bank, sections string) {
 	fmt.Println("List all patches in the bank")
 
 	for i := 0; i < bank.NumPatches; i++ {
-		listPatch(b, i)
+		listPatch(b, i, sections)
 		fmt.Println()
 	}
 }
