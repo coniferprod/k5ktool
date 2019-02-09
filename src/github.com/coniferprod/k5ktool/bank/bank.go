@@ -1082,6 +1082,85 @@ func newSource(d []byte) Source {
 	}
 }
 
+// Macro controller names
+var macroControllerNames = []string{
+	/*  0 */ "Pitch offset",
+	/*  1 */ "Cutoff offset",
+	/*  2 */ "Level",
+	/*  3 */ "Vibrato depth offset",
+	/*  4 */ "Growl depth offset",
+	/*  5 */ "Tremolo depth offset",
+	/*  6 */ "LFO speed offset",
+	/*  7 */ "Attack time offset",
+	/*  8 */ "Decay1 time offset",
+	/*  9 */ "Release time offset",
+	/* 10 */ "Velocity offset",
+	/* 11 */ "Resonance offset",
+	/* 12 */ "Panpot offset",
+	/* 13 */ "FF bias offset",
+	/* 14 */ "FF ENV/LFO depth offset",
+	/* 15 */ "FF ENV/LFO speed offset",
+	/* 16 */ "Harmonic lo offset",
+	/* 17 */ "Harmonic hi offset",
+	/* 18 */ "Harmonic even offset",
+	/* 19 */ "Harmonic odd offset",
+}
+
+type MacroController struct {
+	Param1 Modulation
+	Param2 Modulation
+}
+
+var switchNames = []string{
+	/*  0 */ "OFF",
+	/*  1 */ "Harm Max",
+	/*  2 */ "Harm Bright",
+	/*  3 */ "Harm Dark",
+	/*  4 */ "Harm Saw",
+	/*  5 */ "Select Loud",
+	/*  6 */ "Add Loud",
+	/*  7 */ "Add 5th",
+	/*  8 */ "Add Odd",
+	/*  9 */ "Add Even",
+	/* 10 */ "HE #1",
+	/* 11 */ "HE #2",
+	/* 12 */ "HE Loop",
+	/* 13 */ "FF max",
+	/* 14 */ "FF Comb",
+	/* 15 */ "FF hicut",
+	/* 16 */ "FF Comb2",
+}
+
+var effectDestinatioNames = []string{
+	/* 0 */ "Effect1 Dry/Wet",
+	/* 1 */ "Effect1 Para",
+	/* 2 */ "Effect2 Dry/Wet",
+	/* 3 */ "Effect2 Para",
+	/* 4 */ "Effect3 Dry/Wet",
+	/* 5 */ "Effect3 Para",
+	/* 6 */ "Effect4 Dry/Wet",
+	/* 7 */ "Effect4 Para",
+	/* 8 */ "Reverb Dry/Wet1",
+	/* 9 */ "Reverb Dry/Wet2",
+}
+
+var controlSourceNames = []string{
+	/*  0 */ "Bender",
+	/*  1 */ "Channel Pressure",
+	/*  2 */ "Wheel",
+	/*  3 */ "Expression",
+	/*  4 */ "MIDI Volume",
+	/*  5 */ "Panpot",
+	/*  6 */ "General Controller 1",
+	/*  7 */ "General Controller 2",
+	/*  8 */ "General Controller 3",
+	/*  9 */ "General Controller 4",
+	/* 10 */ "General Controller 5",
+	/* 11 */ "General Controller 6",
+	/* 12 */ "General Controller 7",
+	/* 13 */ "General Controller 8",
+}
+
 // Use struct embedding to avoid clash between member and type name.
 // See https://notes.shichao.io/gopl/ch4/#struct-embedding-and-anonymous-fields
 // It's probably a good idea to use unique names for the fields in the struct-to-embed.
@@ -1099,12 +1178,26 @@ type Common struct {
 	Volume      int
 	Polyphony   int
 	SourceCount int
-	SourceMutes [numSources]bool // "Go does not provide a set type, but since the keys of a map are distinct, a map can serve this pur pose." TGPL p. 96
+	SourceMutes map[int]bool // "Go does not provide a set type, but since the keys of a map are distinct, a map can serve this pur pose." TGPL p. 96
 
 	// AM: Selects sources for Amplitude Modulation. One source can be set to modulate an adjacent source, i.e., 1>2.
 	AmplitudeModulation int
-	PortamentoEnabled   bool
-	PortamentoSpeed     int
+
+	EffectControl1 AssignableModulationTarget
+	EffectControl2 AssignableModulationTarget
+
+	PortamentoEnabled bool
+	PortamentoSpeed   int
+
+	MacroController1 MacroController
+	MacroController2 MacroController
+	MacroController3 MacroController
+	MacroController4 MacroController
+
+	SW1  int
+	SW2  int
+	FSW1 int
+	FSW2 int
 }
 
 func (c Common) String() string {
@@ -1130,23 +1223,28 @@ const (
 	sourceDataSize      = 86
 	additiveWaveKitSize = 806
 	nameSize            = 8
-	sourceCountOffset   = 51
-	nameOffset          = 40
 	numGEQBands         = 7
-	numEffects          = 4
 	numHarmonics        = 64
+	numEffects          = 4
 
-	commonChecksumOffset  = 0
-	effectAlgorithmOffset = 1
-	reverbOffset          = 2
-	volumeOffset          = 48
-	polyphonyOffset       = 49
-	effect1Offset         = 8
-	effect2Offset         = 14
-	effect3Offset         = 20
-	effect4Offset         = 26
-	gEQOffset             = 32
-	portamentoOffset      = 60
+	// Common data offsets:
+	commonChecksumOffset      = 0
+	effectAlgorithmOffset     = 1
+	reverbOffset              = 2
+	effect1Offset             = 8
+	effect2Offset             = 14
+	effect3Offset             = 20
+	effect4Offset             = 26
+	gEQOffset                 = 32
+	nameOffset                = 40
+	volumeOffset              = 48
+	polyphonyOffset           = 49
+	sourceCountOffset         = 51
+	sourceMutesOffset         = 52
+	amplitudeModulationOffset = 53
+	effectControlOffset       = 54
+	portamentoOffset          = 60
+	macroOffset               = 62
 )
 
 type patchPtr struct {
@@ -1250,6 +1348,16 @@ func ParseBankFile(bs []byte) Bank {
 		dataEnd := dataStart + dataSize
 		d := data[dataStart:dataEnd]
 
+		effectAlgorithm := int(d[effectAlgorithmOffset]) + 1 // value is 0...3, scale to 1...4
+		reverb := newReverb(d[reverbOffset : reverbOffset+6])
+		effect1 := newEffect(d[effect1Offset : effect1Offset+6])
+		effect2 := newEffect(d[effect2Offset : effect2Offset+6])
+		effect3 := newEffect(d[effect3Offset : effect3Offset+6])
+		effect4 := newEffect(d[effect4Offset : effect4Offset+6])
+		geq := newGEQ(d[gEQOffset : gEQOffset+7])
+
+		// Note: we skipped the "drum mark" at offset 39; it is always zero.
+
 		nameStart := nameOffset
 		nameEnd := nameStart + nameSize
 		nameData := d[nameStart:nameEnd]
@@ -1257,19 +1365,93 @@ func ParseBankFile(bs []byte) Bank {
 
 		volume := int(d[volumeOffset])
 		polyphony := int(d[polyphonyOffset])
-		effectAlgorithm := int(d[effectAlgorithmOffset]) + 1 // value is 0...3, scale to 1...4
 
-		reverb := newReverb(d[reverbOffset : reverbOffset+6])
+		// There is an unused byte at offset 50.
+		// We needed source count earlier, so it's done already.
 
-		effect1 := newEffect(d[effect1Offset : effect1Offset+6])
-		effect2 := newEffect(d[effect2Offset : effect2Offset+6])
-		effect3 := newEffect(d[effect3Offset : effect3Offset+6])
-		effect4 := newEffect(d[effect4Offset : effect4Offset+6])
+		// Source mutes are in the lowest four bits of the byte:
+		mutes := d[sourceMutesOffset]
+		mutesString := fmt.Sprintf("%08b", mutes)
+		sm := make(map[int]bool)
+		sm[6] = string(mutesString[5]) == "0"
+		sm[5] = string(mutesString[4]) == "0"
+		sm[4] = string(mutesString[3]) == "0"
+		sm[3] = string(mutesString[2]) == "0"
+		sm[2] = string(mutesString[1]) == "0"
+		sm[1] = string(mutesString[0]) == "0"
+		// TODO: Rewrite the source mutes parsing using logical bit operations.
 
-		geq := newGEQ(d[gEQOffset : gEQOffset+7])
+		// Amplitude modulation: indicates which source modulates source 1
+		am := int(d[amplitudeModulationOffset]) + 1
+
+		offset := effectControlOffset
+
+		// Effect control 1
+		ec1 := AssignableModulationTarget{
+			Source: int(d[offset]),
+			Modulation: Modulation{
+				Destination: int(d[offset+1]),
+				Depth:       int(d[offset+2]),
+			},
+		}
+
+		ec2 := AssignableModulationTarget{
+			Source: int(d[offset+3]),
+			Modulation: Modulation{
+				Destination: int(d[offset+4]),
+				Depth:       int(d[offset+5]),
+			},
+		}
 
 		portamentoFlag := int(d[portamentoOffset]) == 1
 		portamentoSpeed := int(d[portamentoOffset+1])
+
+		offset = macroOffset
+		mc1 := MacroController{
+			Param1: Modulation{
+				Destination: int(d[offset]),
+				Depth:       int(d[offset+8]) - 32,
+			},
+			Param2: Modulation{
+				Destination: int(d[offset+1]),
+				Depth:       int(d[offset+9]) - 32,
+			},
+		}
+		mc2 := MacroController{
+			Param1: Modulation{
+				Destination: int(d[offset+2]),
+				Depth:       int(d[offset+10]) - 32,
+			},
+			Param2: Modulation{
+				Destination: int(d[offset+3]),
+				Depth:       int(d[offset+11]) - 32,
+			},
+		}
+		mc3 := MacroController{
+			Param1: Modulation{
+				Destination: int(d[offset+4]),
+				Depth:       int(d[offset+12]) - 32,
+			},
+			Param2: Modulation{
+				Destination: int(d[offset+5]),
+				Depth:       int(d[offset+13]) - 32,
+			},
+		}
+		mc4 := MacroController{
+			Param1: Modulation{
+				Destination: int(d[offset+6]),
+				Depth:       int(d[offset+14]) - 32,
+			},
+			Param2: Modulation{
+				Destination: int(d[offset+7]),
+				Depth:       int(d[offset+15]) - 32,
+			},
+		}
+
+		sw1 := int(d[offset+16])
+		sw2 := int(d[offset+17])
+		fsw1 := int(d[offset+18])
+		fsw2 := int(d[offset+19])
 
 		sourceOffset := commonDataSize // source data starts after common data
 		var sources [numSources]Source
@@ -1282,19 +1464,31 @@ func ParseBankFile(bs []byte) Bank {
 
 		// With struct embedding, the literal must follow the shape of the type declaration. (TGPL, p. 106)
 		c := Common{
-			Name:              name,
-			SourceCount:       sourceCount,
-			Reverb:            reverb,
-			Effect1:           effect1,
-			Effect2:           effect2,
-			Effect3:           effect3,
-			Effect4:           effect4,
-			Volume:            volume,
-			Polyphony:         polyphony,
-			EffectAlgorithm:   effectAlgorithm,
-			GEQ:               geq,
-			PortamentoEnabled: portamentoFlag,
-			PortamentoSpeed:   portamentoSpeed,
+			Name:                name,
+			SourceCount:         sourceCount,
+			Reverb:              reverb,
+			Effect1:             effect1,
+			Effect2:             effect2,
+			Effect3:             effect3,
+			Effect4:             effect4,
+			Volume:              volume,
+			Polyphony:           polyphony,
+			EffectAlgorithm:     effectAlgorithm,
+			GEQ:                 geq,
+			PortamentoEnabled:   portamentoFlag,
+			PortamentoSpeed:     portamentoSpeed,
+			SourceMutes:         sm,
+			AmplitudeModulation: am,
+			EffectControl1:      ec1,
+			EffectControl2:      ec2,
+			MacroController1:    mc1,
+			MacroController2:    mc2,
+			MacroController3:    mc3,
+			MacroController4:    mc4,
+			SW1:                 sw1,
+			SW2:                 sw2,
+			FSW1:                fsw1,
+			FSW2:                fsw2,
 		}
 
 		patch := Patch{Common: c, Sources: sources}
