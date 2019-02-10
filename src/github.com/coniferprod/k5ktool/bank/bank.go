@@ -228,11 +228,13 @@ type AssignableModulationTarget struct {
 	Modulation // NOTE: embedded struct
 }
 
+// PanSettings stores the pan settings of the source
 type PanSettings struct {
 	PanType  int
 	PanValue int
 }
 
+// PitchEnvelopeSettings represents a pitch envelope
 type PitchEnvelopeSettings struct {
 	StartLevel  int
 	AttackTime  int
@@ -240,6 +242,7 @@ type PitchEnvelopeSettings struct {
 	DecayTime   int
 }
 
+// OscillatorSettings stores the DCO parameters of the source
 type OscillatorSettings struct {
 	WaveKit         int
 	Coarse          int
@@ -616,6 +619,7 @@ type FilterVelocityToEnvelope struct {
 	Decay1Time    int
 }
 
+// FilterSettings represents the DCF settings of the source
 type FilterSettings struct {
 	Bypassed              bool
 	Mode                  int
@@ -705,6 +709,10 @@ type MORFHarmonicEnvelope struct {
 	LoopType int
 }
 
+func (e MORFHarmonicEnvelope) String() string {
+	return fmt.Sprintf("T1 = %d, T2 = %d, T3 = %d, T4 = %d, loop = %d", e.Time1, e.Time2, e.Time3, e.Time4, e.LoopType)
+}
+
 type HarmonicEnvelope struct {
 	Segments [4]EnvelopeSegment
 	SRSFlag  bool
@@ -728,11 +736,15 @@ type HarmonicCopyParameters struct {
 	SourceNumber int
 }
 
+func (h HarmonicCopyParameters) String() string {
+	return fmt.Sprintf("P%d S%d", h.PatchNumber, h.SourceNumber)
+}
+
 type HarmonicParameters struct {
 	TotalGain int
 
 	// Non-MORF parameters
-	HarmonicGroup    int
+	HarmonicGroup    int // 0 = LO, 1 = HI
 	KeyScalingToGain int
 	VelocityCurve    int
 	VelocityDepth    int
@@ -746,6 +758,16 @@ type HarmonicParameters struct {
 
 	// Harmonic envelope
 	Envelope MORFHarmonicEnvelope
+}
+
+func (h HarmonicParameters) String() string {
+	group := "LO"
+	if h.HarmonicGroup == 1 {
+		group = "HI"
+	}
+
+	return fmt.Sprintf("total gain = %d, harmonic group = %s, KS to gain = %d, vel. curve = %d, vel. depth = %d\nHC1 = %s, HC2 = %s, HC3 = %s, HC4 = %s\nMORF HE = %s",
+		h.TotalGain, group, h.KeyScalingToGain, h.VelocityCurve, h.VelocityDepth, h.HarmonicCopy1, h.HarmonicCopy2, h.HarmonicCopy3, h.HarmonicCopy4, h.Envelope)
 }
 
 type LFOParameters struct {
@@ -792,6 +814,14 @@ func (f FormantParameters) String() string {
 		f.Bias, envLFOSelString, f.Envelope, f.EnvelopeDepth, f.VelocitySensitivity, f.KeyScaling, f.LFO)
 }
 
+func printable64ByteArray(b [64]byte) string {
+	s := ""
+	for i := 0; i < 64; i++ {
+		s += fmt.Sprintf("%d/%d ", i+1, b[i])
+	}
+	return s
+}
+
 type AdditiveKit struct {
 	MorfFlag          bool // false = MORF OFF, true = MORF ON
 	Harmonics         HarmonicParameters
@@ -809,8 +839,8 @@ func newAdditiveKit(d []byte) AdditiveKit {
 			TotalGain:        int(d[1]),
 			HarmonicGroup:    int(d[2]),
 			KeyScalingToGain: int(d[3]) - 64,
-			VelocityCurve:    int(d[4]), // 1...11
-			VelocityDepth:    int(d[5]), // 0...127
+			VelocityCurve:    int(d[4]) + 1, // 1...12
+			VelocityDepth:    int(d[5]),     // 0...127
 			HarmonicCopy1: HarmonicCopyParameters{
 				PatchNumber:  int(d[6]),
 				SourceNumber: int(d[7]),
@@ -832,7 +862,7 @@ func newAdditiveKit(d []byte) AdditiveKit {
 				Time2:    int(d[15]),
 				Time3:    int(d[16]),
 				Time4:    int(d[17]),
-				LoopType: int(d[18]),
+				LoopType: int(d[18]), // 0 = OFF, 1 = LP1, 2 = LP2
 			},
 		},
 		Formant: FormantParameters{
@@ -862,7 +892,7 @@ func newAdditiveKit(d []byte) AdditiveKit {
 			KeyScaling:          int(d[32]) - 64,
 			LFO: LFOParameters{
 				Speed: int(d[33]),
-				Shape: int(d[34]),
+				Shape: int(d[34]), // 0=TRI, 1=SAW, 2 = RND
 				Depth: int(d[35]),
 			},
 		},
@@ -893,20 +923,20 @@ func newAdditiveKit(d []byte) AdditiveKit {
 				Level: int(d[offset+7]),
 			},
 		}
-		envelope := HarmonicEnvelope{
+
+		kit.HarmonicEnvelopes[i] = HarmonicEnvelope{
 			Segments: segments,
 			SRSFlag:  ((d[offset+3] >> 6) & 0x01) == 1,
 			TRTFlag:  ((d[offset+5] >> 6) & 0x01) == 1,
 		}
-
-		kit.HarmonicEnvelopes[i] = envelope
 	}
 
 	return kit
 }
 
 func (k AdditiveKit) String() string {
-	return fmt.Sprintf("MORF = %t, %s", k.MorfFlag, k.Formant)
+	return fmt.Sprintf("MORF = %t\nFormant parameters: %s\nHarmonic parameters: %s\nLow harmonics = %s\nHigh harmonics: %s",
+		k.MorfFlag, k.Formant, k.Harmonics, printable64ByteArray(k.LowHarmonics), printable64ByteArray(k.HighHarmonics))
 }
 
 // Source represents the data of one of the up to six patch sources.
@@ -938,7 +968,7 @@ func newSource(d []byte) Source {
 	return Source{
 		ZoneLow:           int(d[0]),
 		ZoneHigh:          int(d[1]),
-		VelocitySwitching: int(d[2]),
+		VelocitySwitching: int(d[2]), // TODO: parse velocity switching value
 		EffectPath:        int(d[3]),
 		Volume:            int(d[4]),
 		BenderPitch:       int(d[5]),
@@ -946,58 +976,58 @@ func newSource(d []byte) Source {
 		Pressure: ModulationTarget{
 			Target1: Modulation{
 				Destination: int(d[7]),
-				Depth:       int(d[8]),
+				Depth:       int(d[8]) - 32, // (-31)33 ~ (+31)95
 			},
 			Target2: Modulation{
 				Destination: int(d[9]),
-				Depth:       int(d[10]),
+				Depth:       int(d[10]) - 32,
 			},
 		},
 		Wheel: ModulationTarget{
 			Target1: Modulation{
 				Destination: int(d[11]),
-				Depth:       int(d[12]),
+				Depth:       int(d[12]) - 32,
 			},
 			Target2: Modulation{
 				Destination: int(d[13]),
-				Depth:       int(d[14]),
+				Depth:       int(d[14]) - 32,
 			},
 		},
 		Expression: ModulationTarget{
 			Target1: Modulation{
 				Destination: int(d[15]),
-				Depth:       int(d[16]),
+				Depth:       int(d[16]) - 32,
 			},
 			Target2: Modulation{
 				Destination: int(d[17]),
-				Depth:       int(d[18]),
+				Depth:       int(d[18]) - 32,
 			},
 		},
 		Assignable1: AssignableModulationTarget{
 			Source: int(d[19]),
 			Modulation: Modulation{
 				Destination: int(d[20]),
-				Depth:       int(d[21]),
+				Depth:       int(d[21]) - 32,
 			},
 		},
 		Assignable2: AssignableModulationTarget{
 			Source: int(d[22]),
 			Modulation: Modulation{
 				Destination: int(d[23]),
-				Depth:       int(d[24]),
+				Depth:       int(d[24]) - 32,
 			},
 		},
 		KeyOnDelay: int(d[25]),
 		Pan: PanSettings{
 			PanType:  int(d[26]),
-			PanValue: int(d[27]),
+			PanValue: int(d[27]) - 64,
 		},
 		Oscillator: OscillatorSettings{
 			WaveKit:  waveKitNumber + 1,
-			Coarse:   int(d[30]), // TODO: handle (-24)40 ... +24(88)
+			Coarse:   int(d[30]) - 25, // (-24)40 ... +24(88)
 			Fine:     int(d[31]) - 64,
-			FixedKey: int(d[32]),
-			KSPitch:  int(d[33]),
+			FixedKey: int(d[32]), // 0=OFF, 21~108=ON(A-1 ~ C7)
+			KSPitch:  int(d[33]), // 0=0cent, 1=25cent,2=33cent, 3=50cent
 			PitchEnvelope: PitchEnvelopeSettings{
 				StartLevel:  int(d[34]) - 64,
 				AttackTime:  int(d[35]),
@@ -1009,8 +1039,8 @@ func newSource(d []byte) Source {
 		},
 		Filter: FilterSettings{
 			Bypassed:              int(d[40]) == 1,
-			Mode:                  int(d[41]),
-			VelocityCurve:         int(d[42]) + 1, // make it 1...12
+			Mode:                  int(d[41]),     // 0 = LP, 1 = HP
+			VelocityCurve:         int(d[42]) + 1, // 0~11 (1~12)
 			Resonance:             int(d[43]),
 			Level:                 int(d[44]), // check the 0...7 (7...0) thing
 			Cutoff:                int(d[45]),
@@ -1036,7 +1066,7 @@ func newSource(d []byte) Source {
 			},
 		},
 		Amplifier: AmplifierSettings{
-			VelocityCurve: int(d[60]), // zero- or one-based?
+			VelocityCurve: int(d[60]) + 1, // 0...11 (1~12)
 			Envelope: EnvelopeSettings{
 				AttackTime:  int(d[61]),
 				Decay1Time:  int(d[62]),
