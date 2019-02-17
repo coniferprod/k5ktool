@@ -814,6 +814,16 @@ func (f FormantParameters) String() string {
 		f.Bias, envLFOSelString, f.Envelope, f.EnvelopeDepth, f.VelocitySensitivity, f.KeyScaling, f.LFO)
 }
 
+type HarmonicLevels [64]byte
+
+func (h HarmonicLevels) String() string {
+	s := ""
+	for i := 0; i < len(h); i++ {
+		s += fmt.Sprintf("%d/%d ", i+1, h[i])
+	}
+	return s
+
+}
 func printable64ByteArray(b [64]byte) string {
 	s := ""
 	for i := 0; i < 64; i++ {
@@ -826,7 +836,7 @@ type AdditiveKit struct {
 	MorfFlag          bool // false = MORF OFF, true = MORF ON
 	Harmonics         HarmonicParameters
 	Formant           FormantParameters
-	LowHarmonics      [64]byte
+	LowHarmonics      HarmonicLevels
 	HighHarmonics     [64]byte
 	FormantFilterData [128]byte
 	HarmonicEnvelopes [numHarmonics]HarmonicEnvelope

@@ -9,15 +9,17 @@ import (
 	s "strings"
 
 	"github.com/coniferprod/k5ktool/bank"
+	"github.com/coniferprod/k5ktool/sound"
 )
 
 var (
 	command       string
 	inputFileName string
 	patchNumber   int
+	waveformName  string
 
 	usage = "Usage: k5ktool <command> -i <infile> -p <patchnum>\n" +
-		"<command> = list or convert\n" +
+		"<command> = list, convert, generate\n" +
 		"<infile> = input file (.kaa or .syx)\n" +
 		"<patchnum> = patch number in bank (1...128, default is all)" +
 		"<sections> = which patch sections to show (default is 'ncsa' for all (n = name, c = common, s = sources, a = additive kits))"
@@ -33,11 +35,16 @@ func main() {
 
 	convertCommand := flag.NewFlagSet("convert", flag.ExitOnError)
 
+	generateCommand := flag.NewFlagSet("generate", flag.ExitOnError)
+
 	// Flags for the list command:
 	listInputFileName := listCommand.String("i", "", "Name of Kawai K5000 bank file (.kaa) or System Exclusive file (.syx)")
 
 	// Flags for the convert command
 	convertInputFileName := convertCommand.String("i", "", "Name of Kawai K5000 bank file (.kaa) or System Exclusive file (.syx)")
+
+	// Flas for the generate command
+	generateWaveformName := generateCommand.String("w", "", "Waveform to generate: saw, square, or triangle")
 
 	if len(os.Args) < 2 {
 		fmt.Println(usage)
@@ -49,6 +56,8 @@ func main() {
 		listCommand.Parse(os.Args[2:])
 	case "convert":
 		convertCommand.Parse(os.Args[2:])
+	case "generate":
+		generateCommand.Parse(os.Args[2:])
 	default:
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -67,6 +76,8 @@ func main() {
 		inputFileName = *listInputFileName
 		patchNumber = *patchNumberPtr
 		sections = *sectionsPtr
+
+		list(inputFileName, patchNumber, sections)
 	}
 
 	if convertCommand.Parsed() {
@@ -77,8 +88,27 @@ func main() {
 
 		command = "convert"
 		inputFileName = *convertInputFileName
+
+		fmt.Println("Convert patches")
+		fmt.Println("Not implemented yet")
 	}
 
+	if generateCommand.Parsed() {
+		if *generateWaveformName == "" {
+			generateCommand.PrintDefaults()
+			os.Exit(1)
+		}
+
+		command = "generate"
+		waveformName = *generateWaveformName
+
+		fmt.Printf("Generate, waveform = %s\n", waveformName)
+		lowHarmonics := sound.NewHarmonicLevels(waveformName)
+		fmt.Printf("%s\n", lowHarmonics)
+	}
+}
+
+func list(inputFileName string, patchNumber int, sections string) {
 	extension := s.ToLower(filepath.Ext(inputFileName))
 
 	//fmt.Fprintf(os.Stdout, "command = '%v', input file name = '%v', extension = '%v', patchNumber = %d\n", command, inputFileName, extension, patchNumber)
@@ -101,21 +131,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	switch command {
-	case "list":
-		if patchNumber == 0 {
-			listAllPatches(b, sections)
-		} else {
-			listPatch(b, patchNumber-1, sections)
-		}
-
-	case "convert":
-		fmt.Println("Convert patches")
-		fmt.Println("Not implemented yet")
-
-	default:
-		fmt.Println(usage)
-		os.Exit(1)
+	if patchNumber == 0 {
+		listAllPatches(b, sections)
+	} else {
+		listPatch(b, patchNumber-1, sections)
 	}
 }
 
