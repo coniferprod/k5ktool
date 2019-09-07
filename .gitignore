@@ -174,3 +174,6 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Ionide (cross platform F# VS Code tools) working folder
+.ionide/
