@@ -81,3 +81,45 @@ with an applied displacement.
 | 000000 | Offsets to patch data |
 
 _(to be continued)_
+
+## Working with MIDI System Exclusive messages
+
+Using the [SendMIDI](https://github.com/gbevin/SendMIDI) 
+and [ReceiveMIDI](https://github.com/gbevin/ReceiveMIDI) utilities 
+by [Geert Bevin](https://github.com/gbevin). Refer to the instructions
+of these programs for details.
+
+Open two Terminal windows, one for sending and the other for receiving MIDI messages.
+You can list the MIDI ports on your system with `sendmidi list`. You should get back something
+like this, depending on what you have connected:
+
+    Network Session 1
+    Q25
+    Steinberg UR22mkII  Port1
+    E-MU XMidi2X2 Midi Out 1
+    E-MU XMidi2X2 Midi Out 2
+
+Save the name of the port that is connected to your synth in an environment variable available
+for shell scripts, for example:
+
+    export MIDI_PORT_NAME="E-MU XMidi2X2 Midi Out 1"
+
+Start receiving from the MIDI port:
+
+    receivemidi dev $MIDI_PORT_NAME
+
+Note that the Kawai K5000 features active sensing, so you will start to see `active-sensing` 
+messages arriving from the unit.
+
+In the second terminal, send a System Exclusive message with an ID request to the unit:
+
+    sendmidi dev $MIDI_PORT_NAME hex syx 40 00 60
+
+If you're not using MIDI channel 1, replace the `00` with the actual channel (01h/2 ... 0fh/16).
+
+You should see the response from the unit in the output of the `receivemidi` command:
+
+    system-exclusive hex 40 00 61 00 0A 02 dec
+
+This means an ID acknowledge (61h) on channel 1 (00h) from a Kawai K5000S (02h).
+
