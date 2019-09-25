@@ -46,6 +46,15 @@ namespace K5KTool
 
         public MORFHarmonicEnvelope MORFEnvelope;
 
+        public HarmonicParameters()
+        {
+            Copy1 = new HarmonicCopyParameters();
+            Copy2 = new HarmonicCopyParameters();
+            Copy3 = new HarmonicCopyParameters();
+            Copy4 = new HarmonicCopyParameters();
+            MORFEnvelope = new MORFHarmonicEnvelope();
+        }
+
         public byte[] ToData()
         {
             List<byte> data = new List<byte>();
@@ -238,6 +247,11 @@ namespace K5KTool
             LoudHarmonics = new byte[NumHarmonics];
             FormantFilter = new byte[NumFilterBands];
             HarmonicEnvelopes = new HarmonicEnvelope[NumHarmonics];
+
+            for (int i = 0; i < NumHarmonics; i++)
+            {
+                HarmonicEnvelopes[i] = new HarmonicEnvelope();
+            }
         }
 
         public AdditiveKit(byte[] data)
