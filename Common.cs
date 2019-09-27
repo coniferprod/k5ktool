@@ -500,41 +500,43 @@ namespace K5KTool
 
         private ReverbSettings GetReverb(byte[] data, int offset)
         {
-            ReverbSettings reverb = new ReverbSettings();
-            reverb.Type = data[offset];
-            reverb.DryWet = data[offset + 1];
-            reverb.Param1 = data[offset + 2];
-            reverb.Param2 = data[offset + 3];
-            reverb.Param3 = data[offset + 4];
-            reverb.Param4 = data[offset + 5];
-            return reverb;
+            return new ReverbSettings()
+            {
+                Type = data[offset],
+                DryWet = data[offset + 1],
+                Param1 = data[offset + 2],
+                Param2 = data[offset + 3],
+                Param3 = data[offset + 4],
+                Param4 = data[offset + 5]
+            };
         }
 
         private EffectSettings GetEffect(byte[] data, int offset)
         {
-            EffectSettings effect = new EffectSettings();
-            effect.Type = data[offset];
-            effect.Depth = data[offset + 1];
-            effect.Param1 = data[offset + 2];
-            effect.Param2 = data[offset + 3];
-            effect.Param3 = data[offset + 4];
-            effect.Param4 = data[offset + 5];
-            return effect;
+            return new EffectSettings()
+            {
+                Type = data[offset],
+                Depth = data[offset + 1],
+                Param1 = data[offset + 2],
+                Param2 = data[offset + 3],
+                Param3 = data[offset + 4],
+                Param4 = data[offset + 5]
+            };
         }
 
         private GEQSettings GetGEQ(byte[] data, int offset)
         {
-            GEQSettings g = new GEQSettings();
-
-            // 58(-6) ~ 70(+6), so 64 is zero
-            g.Freq1 = (sbyte)(data[offset] - 64);
-            g.Freq2 = (sbyte)(data[offset + 1] - 64);
-            g.Freq3 = (sbyte)(data[offset + 2] - 64);
-            g.Freq4 = (sbyte)(data[offset + 3] - 64);
-            g.Freq5 = (sbyte)(data[offset + 4] - 64);
-            g.Freq6 = (sbyte)(data[offset + 5] - 64);
-            g.Freq7 = (sbyte)(data[offset + 6] - 64);
-            return g;
+            return new GEQSettings()
+            {
+                // 58(-6) ~ 70(+6), so 64 is zero
+                Freq1 = (sbyte)(data[offset] - 64),
+                Freq2 = (sbyte)(data[offset + 1] - 64),
+                Freq3 = (sbyte)(data[offset + 2] - 64),
+                Freq4 = (sbyte)(data[offset + 3] - 64),
+                Freq5 = (sbyte)(data[offset + 4] - 64),
+                Freq6 = (sbyte)(data[offset + 5] - 64),
+                Freq7 = (sbyte)(data[offset + 6] - 64)
+            };
         }
 
         private string GetName(byte[] data, int offset)

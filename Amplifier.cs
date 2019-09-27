@@ -85,17 +85,20 @@ namespace K5KTool
 
         public DCASettings()
         {
-            Envelope = new AmplifierEnvelope();
             KeyScaling = new KeyScalingControlEnvelope();
             VelocitySensitivity = new VelocityControlEnvelope();
 
             VelocityCurve = 5;
-            Envelope.AttackTime = 20;
-            Envelope.Decay1Time = 95;
-            Envelope.Decay1Level = 127;
-            Envelope.Decay1Time = 110;
-            Envelope.Decay1Level = 127;
-            Envelope.ReleaseTime = 11;
+
+            Envelope = new AmplifierEnvelope()
+            {
+                AttackTime = 20,
+                Decay1Time = 95,
+                Decay1Level = 127,
+                Decay2Time = 110,
+                Decay2Level = 127,
+                ReleaseTime = 11
+            };
         }
 
         public DCASettings(byte[] data, int offset)
@@ -186,5 +189,4 @@ namespace K5KTool
             return data.ToArray();
         }
     }
-
 }
