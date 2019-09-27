@@ -208,204 +208,194 @@ namespace K5KTool
                 }
                 else if (command.Equals("create"))
                 {
-                    Single single = new Single();
-
-                    // Some kind of init patch
-                    single.Common.Name = "WizooIni";
-                    single.Common.Volume = 115;
-                    single.Common.NumSources = 2;
-                    single.Common.IsPortamentoEnabled = false;
-                    single.Common.PortamentoSpeed = 0;
-
-                    single.Sources = new Source[single.Common.NumSources];
-
-                    single.Sources[0] = new Source();
-                    single.Sources[0].ZoneLow = 0;
-                    single.Sources[0].ZoneHigh = 127;
-                    VelocitySwitchSettings vel1 = new VelocitySwitchSettings();
-                    vel1.Type = VelocitySwitchType.Off;
-                    vel1.Velocity = 68;
-                    single.Sources[0].VelocitySwitch = vel1;
-
-                    single.Sources[0].Volume = 120;
-                    single.Sources[0].KeyOnDelay = 0;
-                    single.Sources[0].EffectPath = 1;
-                    single.Sources[0].BenderCutoff = 12;
-                    single.Sources[0].BenderPitch = 2;
-                    single.Sources[0].Pan = PanType.Normal;
-                    single.Sources[0].NormalPanValue = 0;
-
-                    // DCO settings for additive source
-                    single.Sources[0].DCO.WaveNumber = AdditiveKit.WaveNumber;
-                    single.Sources[0].DCO.Coarse = 0;
-                    single.Sources[0].DCO.Fine = 0;
-                    single.Sources[0].DCO.KSPitch = KeyScalingToPitch.ZeroCent;
-                    single.Sources[0].DCO.FixedKey = 0; // OFF
-
-                    PitchEnvelope pitchEnv = new PitchEnvelope();
-                    pitchEnv.StartLevel = 0;
-                    pitchEnv.AttackTime = 4;
-                    pitchEnv.AttackLevel = 0;
-                    pitchEnv.DecayTime = 64;
-                    pitchEnv.LevelVelocitySensitivity = 0;
-                    pitchEnv.TimeVelocitySensitivity = 0;
-                    single.Sources[0].DCO.Envelope = pitchEnv;
-
-                    // DCF
-                    single.Sources[0].DCF.IsActive = true;
-                    single.Sources[0].DCF.Cutoff = 55;
-                    single.Sources[0].DCF.Resonance = 0;
-                    single.Sources[0].DCF.Level = 7;
-                    single.Sources[0].DCF.Mode = FilterMode.LowPass;
-                    single.Sources[0].DCF.VelocityCurve = 5;
-
-                    // DCF Envelope
-                    FilterEnvelope filterEnv = new FilterEnvelope();
-                    single.Sources[0].DCF.EnvelopeDepth = 25;
-                    filterEnv.AttackTime = 0;
-                    filterEnv.Decay1Time = 120;
-                    filterEnv.Decay1Level = 63;
-                    filterEnv.Decay2Time = 80;
-                    filterEnv.Decay2Level = 63;
-                    filterEnv.ReleaseTime = 20;
-                    single.Sources[0].DCF.Envelope = filterEnv;
-                    // DCF Modulation:
-                    single.Sources[0].DCF.KSToEnvAttackTime = 0;
-                    single.Sources[0].DCF.KSToEnvDecay1Time = 0;
-                    single.Sources[0].DCF.VelocityToEnvDepth = 30;
-                    single.Sources[0].DCF.VelocityToEnvAttackTime = 0;
-                    single.Sources[0].DCF.VelocityToEnvDecay1Time = 0;
-
-                    // DCA Envelope
-                    AmplifierEnvelope ampEnv = new AmplifierEnvelope();
-                    ampEnv.AttackTime = 1;
-                    ampEnv.Decay1Time = 94;
-                    ampEnv.Decay1Level = 127;
-                    ampEnv.Decay2Time = 80;
-                    ampEnv.Decay2Level = 63;
-                    ampEnv.ReleaseTime = 20;
-                    single.Sources[0].DCA.Envelope = ampEnv;
-
-                    // DCA Modulation
-                    single.Sources[0].DCA.KeyScaling.Level = 0;
-                    single.Sources[0].DCA.KeyScaling.AttackTime = 0;
-                    single.Sources[0].DCA.KeyScaling.Decay1Time = 0;
-                    single.Sources[0].DCA.KeyScaling.ReleaseTime = 0;
-
-                    single.Sources[0].DCA.VelocitySensitivity.Level = 20;
-                    single.Sources[0].DCA.VelocitySensitivity.AttackTime = 20;
-                    single.Sources[0].DCA.VelocitySensitivity.Decay1Time = 20;
-                    single.Sources[0].DCA.VelocitySensitivity.ReleaseTime = 20;
-
-                    // Harmonic levels
-                    string waveformName = "brassy";
-                    int numHarmonics = 64;
-                    byte[] levels = LeiterEngine.GetHarmonicLevels(waveformName, numHarmonics, 127);  // levels are 0...127
-                    System.Console.WriteLine(String.Format("{0}, {1} harmonics:", waveformName, numHarmonics));
-                    single.Sources[0].ADD.SoftHarmonics = levels;
-                    for (int i = 0; i < levels.Length; i++)
-                    {
-                        System.Console.WriteLine(String.Format("{0} = {1}", i + 1, levels[i]));
-                    }
-
-                    single.Sources[1] = new Source();
-                    VelocitySwitchSettings vel2 = new VelocitySwitchSettings();
-                    vel2.Type = VelocitySwitchType.Off;
-                    vel2.Velocity = 68;
-                    single.Sources[1].VelocitySwitch = vel2;
-
-                    single.Sources[1].Volume = 120;
-                    single.Sources[1].KeyOnDelay = 0;
-                    single.Sources[1].EffectPath = 1;
-                    single.Sources[1].BenderCutoff = 12;
-                    single.Sources[1].BenderPitch = 2;
-                    single.Sources[1].Pan = PanType.Normal;
-                    single.Sources[1].NormalPanValue = 0;
-
-                    // DCO
-                    single.Sources[1].DCO.WaveNumber = 412;
-                    single.Sources[1].DCO.Coarse = 0;
-                    single.Sources[1].DCO.Fine = 0;
-                    single.Sources[1].DCO.KSPitch = KeyScalingToPitch.ZeroCent;
-                    single.Sources[1].DCO.FixedKey = 0; // OFF
-
-                    PitchEnvelope pitchEnv2 = new PitchEnvelope();
-                    pitchEnv2.StartLevel = 0;
-                    pitchEnv2.AttackTime = 4;
-                    pitchEnv2.AttackLevel = 0;
-                    pitchEnv2.DecayTime = 64;
-                    pitchEnv2.LevelVelocitySensitivity = 0;
-                    pitchEnv2.TimeVelocitySensitivity = 0;
-                    single.Sources[1].DCO.Envelope = pitchEnv2;
-
-                    // DCF
-                    single.Sources[1].DCF.IsActive = true;
-                    single.Sources[1].DCF.Cutoff = 55;
-                    single.Sources[1].DCF.Resonance = 0;
-                    single.Sources[1].DCF.Level = 7;
-                    single.Sources[1].DCF.Mode = FilterMode.LowPass;
-                    single.Sources[1].DCF.VelocityCurve = 5;
-
-                    // DCF Envelope
-                    FilterEnvelope filterEnv2 = new FilterEnvelope();
-                    single.Sources[1].DCF.EnvelopeDepth = 25;
-                    filterEnv2.AttackTime = 0;
-                    filterEnv2.Decay1Time = 120;
-                    filterEnv2.Decay1Level = 63;
-                    filterEnv2.Decay2Time = 80;
-                    filterEnv2.Decay2Level = 63;
-                    filterEnv2.ReleaseTime = 20;
-                    single.Sources[1].DCF.Envelope = filterEnv2;
-                    // DCF Modulation:
-                    single.Sources[1].DCF.KSToEnvAttackTime = 0;
-                    single.Sources[1].DCF.KSToEnvDecay1Time = 0;
-                    single.Sources[1].DCF.VelocityToEnvDepth = 30;
-                    single.Sources[1].DCF.VelocityToEnvAttackTime = 0;
-                    single.Sources[1].DCF.VelocityToEnvDecay1Time = 0;
-
-                    // DCA Envelope
-                    AmplifierEnvelope ampEnv2 = new AmplifierEnvelope();
-                    ampEnv2.AttackTime = 1;
-                    ampEnv2.Decay1Time = 94;
-                    ampEnv2.Decay1Level = 127;
-                    ampEnv2.Decay2Time = 80;
-                    ampEnv2.Decay2Level = 63;
-                    ampEnv2.ReleaseTime = 15;
-                    single.Sources[1].DCA.Envelope = ampEnv2;
-
-                    // DCA Modulation
-                    single.Sources[1].DCA.KeyScaling.Level = 0;
-                    single.Sources[1].DCA.KeyScaling.AttackTime = 0;
-                    single.Sources[1].DCA.KeyScaling.Decay1Time = 0;
-                    single.Sources[1].DCA.KeyScaling.ReleaseTime = 0;
-
-                    single.Sources[1].DCA.VelocitySensitivity.Level = 20;
-                    single.Sources[1].DCA.VelocitySensitivity.AttackTime = 0;
-                    single.Sources[1].DCA.VelocitySensitivity.Decay1Time = 0;
-                    single.Sources[1].DCA.VelocitySensitivity.ReleaseTime = 0;
-
+                    Single single = NewSinglePatch("NewSound");
                     byte[] singleData = single.ToData();
                     System.Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
                     System.Console.WriteLine(Util.HexDump(singleData));
                 }
             }
 
-            // For debugging: dump the wave list
-            //for (int i = 0; i < Wave.NumWaves; i++)
-            //{
-            //    System.Console.WriteLine(String.Format("{0,3} {1}", i + 1, Wave.Instance[i]));
-            //}
-/*
-            waveformName = "square";
-            levels = LeiterEngine.GetHarmonicLevels(waveformName, numHarmonics, 127);
+            return 0;
+        }
+
+        static Single NewSinglePatch(string patchName)
+        {
+            Single single = new Single();
+
+            single.Common.Name = patchName;
+            single.Common.Volume = 115;
+            single.Common.NumSources = 2;
+            single.Common.IsPortamentoEnabled = false;
+            single.Common.PortamentoSpeed = 0;
+
+            single.Sources = new Source[single.Common.NumSources];
+
+            single.Sources[0] = new Source();
+            single.Sources[0].ZoneLow = 0;
+            single.Sources[0].ZoneHigh = 127;
+            VelocitySwitchSettings vel1 = new VelocitySwitchSettings();
+            vel1.Type = VelocitySwitchType.Off;
+            vel1.Velocity = 68;
+            single.Sources[0].VelocitySwitch = vel1;
+
+            single.Sources[0].Volume = 120;
+            single.Sources[0].KeyOnDelay = 0;
+            single.Sources[0].EffectPath = 1;
+            single.Sources[0].BenderCutoff = 12;
+            single.Sources[0].BenderPitch = 2;
+            single.Sources[0].Pan = PanType.Normal;
+            single.Sources[0].NormalPanValue = 0;
+
+            // DCO settings for additive source
+            single.Sources[0].DCO.WaveNumber = AdditiveKit.WaveNumber;
+            single.Sources[0].DCO.Coarse = 0;
+            single.Sources[0].DCO.Fine = 0;
+            single.Sources[0].DCO.KSPitch = KeyScalingToPitch.ZeroCent;
+            single.Sources[0].DCO.FixedKey = 0; // OFF
+
+            PitchEnvelope pitchEnv = new PitchEnvelope();
+            pitchEnv.StartLevel = 0;
+            pitchEnv.AttackTime = 4;
+            pitchEnv.AttackLevel = 0;
+            pitchEnv.DecayTime = 64;
+            pitchEnv.LevelVelocitySensitivity = 0;
+            pitchEnv.TimeVelocitySensitivity = 0;
+            single.Sources[0].DCO.Envelope = pitchEnv;
+
+            // DCF
+            single.Sources[0].DCF.IsActive = true;
+            single.Sources[0].DCF.Cutoff = 55;
+            single.Sources[0].DCF.Resonance = 0;
+            single.Sources[0].DCF.Level = 7;
+            single.Sources[0].DCF.Mode = FilterMode.LowPass;
+            single.Sources[0].DCF.VelocityCurve = 5;
+
+            // DCF Envelope
+            FilterEnvelope filterEnv = new FilterEnvelope();
+            single.Sources[0].DCF.EnvelopeDepth = 25;
+            filterEnv.AttackTime = 0;
+            filterEnv.Decay1Time = 120;
+            filterEnv.Decay1Level = 63;
+            filterEnv.Decay2Time = 80;
+            filterEnv.Decay2Level = 63;
+            filterEnv.ReleaseTime = 20;
+            single.Sources[0].DCF.Envelope = filterEnv;
+            // DCF Modulation:
+            single.Sources[0].DCF.KSToEnvAttackTime = 0;
+            single.Sources[0].DCF.KSToEnvDecay1Time = 0;
+            single.Sources[0].DCF.VelocityToEnvDepth = 30;
+            single.Sources[0].DCF.VelocityToEnvAttackTime = 0;
+            single.Sources[0].DCF.VelocityToEnvDecay1Time = 0;
+
+            // DCA Envelope
+            AmplifierEnvelope ampEnv = new AmplifierEnvelope();
+            ampEnv.AttackTime = 1;
+            ampEnv.Decay1Time = 94;
+            ampEnv.Decay1Level = 127;
+            ampEnv.Decay2Time = 80;
+            ampEnv.Decay2Level = 63;
+            ampEnv.ReleaseTime = 20;
+            single.Sources[0].DCA.Envelope = ampEnv;
+
+            // DCA Modulation
+            single.Sources[0].DCA.KeyScaling.Level = 0;
+            single.Sources[0].DCA.KeyScaling.AttackTime = 0;
+            single.Sources[0].DCA.KeyScaling.Decay1Time = 0;
+            single.Sources[0].DCA.KeyScaling.ReleaseTime = 0;
+
+            single.Sources[0].DCA.VelocitySensitivity.Level = 20;
+            single.Sources[0].DCA.VelocitySensitivity.AttackTime = 20;
+            single.Sources[0].DCA.VelocitySensitivity.Decay1Time = 20;
+            single.Sources[0].DCA.VelocitySensitivity.ReleaseTime = 20;
+
+            // Harmonic levels
+            string waveformName = "brassy";
+            int numHarmonics = 64;
+            byte[] levels = LeiterEngine.GetHarmonicLevels(waveformName, numHarmonics, 127);  // levels are 0...127
             System.Console.WriteLine(String.Format("{0}, {1} harmonics:", waveformName, numHarmonics));
+            single.Sources[0].ADD.SoftHarmonics = levels;
             for (int i = 0; i < levels.Length; i++)
             {
                 System.Console.WriteLine(String.Format("{0} = {1}", i + 1, levels[i]));
             }
- */
 
-            return 0;
+            single.Sources[1] = new Source();
+            VelocitySwitchSettings vel2 = new VelocitySwitchSettings();
+            vel2.Type = VelocitySwitchType.Off;
+            vel2.Velocity = 68;
+            single.Sources[1].VelocitySwitch = vel2;
+
+            single.Sources[1].Volume = 120;
+            single.Sources[1].KeyOnDelay = 0;
+            single.Sources[1].EffectPath = 1;
+            single.Sources[1].BenderCutoff = 12;
+            single.Sources[1].BenderPitch = 2;
+            single.Sources[1].Pan = PanType.Normal;
+            single.Sources[1].NormalPanValue = 0;
+
+            // DCO
+            single.Sources[1].DCO.WaveNumber = 412;
+            single.Sources[1].DCO.Coarse = 0;
+            single.Sources[1].DCO.Fine = 0;
+            single.Sources[1].DCO.KSPitch = KeyScalingToPitch.ZeroCent;
+            single.Sources[1].DCO.FixedKey = 0; // OFF
+
+            PitchEnvelope pitchEnv2 = new PitchEnvelope();
+            pitchEnv2.StartLevel = 0;
+            pitchEnv2.AttackTime = 4;
+            pitchEnv2.AttackLevel = 0;
+            pitchEnv2.DecayTime = 64;
+            pitchEnv2.LevelVelocitySensitivity = 0;
+            pitchEnv2.TimeVelocitySensitivity = 0;
+            single.Sources[1].DCO.Envelope = pitchEnv2;
+
+            // DCF
+            single.Sources[1].DCF.IsActive = true;
+            single.Sources[1].DCF.Cutoff = 55;
+            single.Sources[1].DCF.Resonance = 0;
+            single.Sources[1].DCF.Level = 7;
+            single.Sources[1].DCF.Mode = FilterMode.LowPass;
+            single.Sources[1].DCF.VelocityCurve = 5;
+
+            // DCF Envelope
+            FilterEnvelope filterEnv2 = new FilterEnvelope();
+            single.Sources[1].DCF.EnvelopeDepth = 25;
+            filterEnv2.AttackTime = 0;
+            filterEnv2.Decay1Time = 120;
+            filterEnv2.Decay1Level = 63;
+            filterEnv2.Decay2Time = 80;
+            filterEnv2.Decay2Level = 63;
+            filterEnv2.ReleaseTime = 20;
+            single.Sources[1].DCF.Envelope = filterEnv2;
+            // DCF Modulation:
+            single.Sources[1].DCF.KSToEnvAttackTime = 0;
+            single.Sources[1].DCF.KSToEnvDecay1Time = 0;
+            single.Sources[1].DCF.VelocityToEnvDepth = 30;
+            single.Sources[1].DCF.VelocityToEnvAttackTime = 0;
+            single.Sources[1].DCF.VelocityToEnvDecay1Time = 0;
+
+            // DCA Envelope
+            AmplifierEnvelope ampEnv2 = new AmplifierEnvelope();
+            ampEnv2.AttackTime = 1;
+            ampEnv2.Decay1Time = 94;
+            ampEnv2.Decay1Level = 127;
+            ampEnv2.Decay2Time = 80;
+            ampEnv2.Decay2Level = 63;
+            ampEnv2.ReleaseTime = 15;
+            single.Sources[1].DCA.Envelope = ampEnv2;
+
+            // DCA Modulation
+            single.Sources[1].DCA.KeyScaling.Level = 0;
+            single.Sources[1].DCA.KeyScaling.AttackTime = 0;
+            single.Sources[1].DCA.KeyScaling.Decay1Time = 0;
+            single.Sources[1].DCA.KeyScaling.ReleaseTime = 0;
+
+            single.Sources[1].DCA.VelocitySensitivity.Level = 20;
+            single.Sources[1].DCA.VelocitySensitivity.AttackTime = 0;
+            single.Sources[1].DCA.VelocitySensitivity.Decay1Time = 0;
+            single.Sources[1].DCA.VelocitySensitivity.ReleaseTime = 0;
+
+            return single;
         }
     }
 }
