@@ -103,7 +103,7 @@ run the application on both macOS and Windows, and possibly also Linux
 first choice in other circumstances. However, as I was writing an iOS 
 application in Swift at the same time, it suddently struck me: maybe it
 is not so important to be able to run this on many platforms, after all.
-What if I just used Swift and got it over with. I would end up with a 
+What if I just used Swift and got it over with? I would end up with a 
 command-line utility for macOS (or, in a pinch, Linux), but I don't think
 I care that much, since I will be making most use of it on the Mac anyway.
 
@@ -117,4 +117,4 @@ article [Building a command line tool using the Swift Package Manager](https://w
 For reasons I have actually forgotten, I made the decision to go back to
 C# for the fifth and final interation. I think it may have had something
 to do with the desire to run this utility in Windows, and hopefully develop
-a GUI for a K5000 patch editor for Windows 10 using UWP.
+a GUI for a K5000 patch editor for Windows 10 as a UWP application
