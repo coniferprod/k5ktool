@@ -6,49 +6,9 @@ Advanced Additive Synthesizer (1996).
 
 _(work in progress)_
 
-Requires Swift 4.2 or later.
+Requires .NET Core 2.1 or later.
 
-## Programming languages
-
-I started this utility in C# and .NET Core, mostly to get back on track
-with C# and see what .NET Core development with Visual Studio Code would
-be like. I soon realized that I wanted to progress with the utility more
-than I wanted to (re-)learn C#, and I was also a bit frustrated at how
-tall and wide C# actually is. It gains height from the brace
-conventions, and width from the nested namespaces and classes.
-
-My second attempt was in Python 3, and it is still present in this
-repository. I've never been too comfortable with mid-to-low level
-plumbing using Python libraries beyond slurping in files, so it was a
-bit of a challenge to pick out individual bytes and words from the binary
-source file. I can use Python on a higher level just fine, though.
-
-The third attempt was to learn the Go programming language, since it has
-gained a lot of popularity recently (2016-2018), and seemed to fit well
-to the task of reading a binary file and processing the information. This
-was my second serious attempt at Go, and I got a little further this time.
-I was starting to feel almost comfortable with the language constructs,
-even though there is a certain C-like terseness to Go that does not really feel too comfortable, as it results in lots of code lines. This is something
-that I really need to think about, as there are many things I like about Go.
-
-Apart from learning, my earlier language choices reflected the desire to
-run the application on both macOS and Windows, and possibly also Linux
-(on the Raspberry Pi). This ruled out Swift, which would have been my
-first choice in other circumstances. However, as I was writing an iOS 
-application in Swift at the same time, it suddently struck me: maybe it
-is not so important to be able to run this on many platforms, after all.
-What if I just used Swift and got it over with. I would end up with a 
-command-line utility for macOS (or, in a pinch, Linux), but I don't think
-I care that much, since I will be making most use of it on the Mac anyway.
-
-So, the fourth (and hopefully final) language for this utility is Swift, 
-version 4.2, developed in Xcode 10. The learning purpose has been 
-fulfilled; I am now better versed in C#, Python and Go than when I started.
-
-For the Swift version I have been heavily influenced by John Sundell's
-article [Building a command line tool using the Swift Package Manager](https://www.swiftbysundell.com/posts/building-a-command-line-tool-using-the-swift-package-manager).
-
-## The KAA and KA1 file formats
+## File formats
 
 The Kawai K5000 patches are usually stored in two binary file formats:
 
@@ -65,22 +25,12 @@ The Kawai K5000 MIDI implementation documents the structure of the
 single and multi patches and data dumps which appear inside the files, 
 but does not go into detail about the KAA and KA1 files themselves.
 
-### KAA patch bank files
-
-Each bank has a maximum of 128 patches. Each patch can have up to
-six sources, which can be either additive or PCM (see the K5000 manual
-for details).
-
-At the start of the file is a table of offsets for each patch. Some of the
-patches in a bank may be unused, and in that case the offset is zero.
-Otherwise it indicates the location of the patch data inside the file,
-with an applied displacement.
-
-| Offset | Data |
-| ------ | ---- |
-| 000000 | Offsets to patch data |
-
-_(to be continued)_
+This utility does not deal with the native Kawai K5000 patch formats.
+Those formats are effectively a dump of the K5000 internal memory, and
+contain pointers to different parts of the data files. Since we can
+just as well transfer patches back and forth using MIDI System Exclusive
+messages, either individually or as bulk dumps, we can ignore the native 
+KAA and KA1 formats.
 
 ## Working with MIDI System Exclusive messages
 
@@ -123,3 +73,48 @@ You should see the response from the unit in the output of the `receivemidi` com
 
 This means an ID acknowledge (61h) on channel 1 (00h) from a Kawai K5000S (02h).
 
+## History
+
+I started this utility in C# and .NET Core, mostly to get back on track
+with C# and see what .NET Core development with Visual Studio Code would
+be like. I soon realized that I wanted to progress with the utility more
+than I wanted to (re-)learn C#, and I was also a bit frustrated at how
+tall and wide C# actually is. It gains height from the brace
+conventions, and width from the nested namespaces and classes.
+
+My second attempt was in Python 3, and it is still present in this
+repository. I've never been too comfortable with mid-to-low level
+plumbing using Python libraries beyond slurping in files, so it was a
+bit of a challenge to pick out individual bytes and words from the binary
+source file. I can use Python on a higher level just fine, though.
+
+The third attempt was to learn the Go programming language, since it has
+gained a lot of popularity recently (2016-2018), and seemed to fit well
+to the task of reading a binary file and processing the information. This
+was my second serious attempt at Go, and I got a little further this time.
+I was starting to feel almost comfortable with the language constructs,
+even though there is a certain C-like terseness to Go that does not really 
+feel too comfortable, as it results in lots of code lines. This is something
+that I really need to think about, as there are many things I like about Go.
+
+Apart from learning, my earlier language choices reflected the desire to
+run the application on both macOS and Windows, and possibly also Linux
+(on the Raspberry Pi). This ruled out Swift, which would have been my
+first choice in other circumstances. However, as I was writing an iOS 
+application in Swift at the same time, it suddently struck me: maybe it
+is not so important to be able to run this on many platforms, after all.
+What if I just used Swift and got it over with. I would end up with a 
+command-line utility for macOS (or, in a pinch, Linux), but I don't think
+I care that much, since I will be making most use of it on the Mac anyway.
+
+So, the fourth language for this utility was Swift version 4.2, developed 
+in Xcode 10. The learning purpose has been fulfilled; I am now better versed 
+in all of these languages than I was when I started.
+
+For the Swift version I was heavily influenced by John Sundell's
+article [Building a command line tool using the Swift Package Manager](https://www.swiftbysundell.com/posts/building-a-command-line-tool-using-the-swift-package-manager).
+
+For reasons I have actually forgotten, I made the decision to go back to
+C# for the fifth and final interation. I think it may have had something
+to do with the desire to run this utility in Windows, and hopefully develop
+a GUI for a K5000 patch editor for Windows 10 using UWP.
