@@ -309,7 +309,7 @@ namespace K5KTool
             single.Sources[0].DCA.VelocitySensitivity.ReleaseTime = 20;
 
             // Harmonic levels
-            string waveformName = "brassy";
+            string waveformName = "pluckedString";
             int numHarmonics = 64;
             byte[] levels = LeiterEngine.GetHarmonicLevels(waveformName, numHarmonics, 127);  // levels are 0...127
             System.Console.WriteLine(String.Format("{0}, {1} harmonics:", waveformName, numHarmonics));
@@ -319,6 +319,13 @@ namespace K5KTool
                 System.Console.WriteLine(String.Format("{0} = {1}", i + 1, levels[i]));
             }
 
+            // Harmonic envelopes
+            HarmonicEnvelope harmEnv = HarmEnv["pluck"];
+            for (int i = 0; i < AdditiveKit.NumHarmonics; i++)
+            {
+                single.Sources[0].ADD.HarmonicEnvelopes[i] = harmEnv;
+            }
+            
             single.Sources[1] = new Source();
             VelocitySwitchSettings vel2 = new VelocitySwitchSettings();
             vel2.Type = VelocitySwitchType.Off;
@@ -397,5 +404,149 @@ namespace K5KTool
 
             return single;
         }
+
+        static Dictionary<string, HarmonicEnvelope> HarmEnv = new Dictionary<string, HarmonicEnvelope>()
+        {
+            {
+                "piano",
+                new HarmonicEnvelope()
+                {
+                    Segment0 = new EnvelopeSegment()
+                    {
+                        Rate = 125,
+                        Level = 63
+                    },
+                    Segment1 = new EnvelopeSegment()
+                    {
+                        Rate = 92,
+                        Level = 63
+                    },
+                    Segment2 = new EnvelopeSegment()
+                    {
+                        Rate = 49,
+                        Level = 63
+                    },
+                    Segment3 = new EnvelopeSegment()
+                    {
+                        Rate = 39,
+                        Level = 49
+                    },
+                    Segment1Loop = false,
+                    Segment2Loop = false
+                }
+            },
+            {
+                "epiano",
+                new HarmonicEnvelope()
+                {
+                    Segment0 = new EnvelopeSegment()
+                    {
+                        Rate = 127,
+                        Level = 63
+                    },
+                    Segment1 = new EnvelopeSegment()
+                    {
+                        Rate = 81,
+                        Level = 63
+                    },
+                    Segment2 = new EnvelopeSegment()
+                    {
+                        Rate = 15,
+                        Level = 63
+                    },
+                    Segment3 = new EnvelopeSegment()
+                    {
+                        Rate = 0,
+                        Level = 0
+                    },
+                    Segment1Loop = false,
+                    Segment2Loop = false
+                }
+            },
+            {
+                "pluck",
+                new HarmonicEnvelope()
+                {
+                    Segment0 = new EnvelopeSegment()
+                    {
+                        Rate = 127,
+                        Level = 63
+                    },
+                    Segment1 = new EnvelopeSegment()
+                    {
+                        Rate = 118,
+                        Level = 63
+                    },
+                    Segment2 = new EnvelopeSegment()
+                    {
+                        Rate = 79,
+                        Level = 63
+                    },
+                    Segment3 = new EnvelopeSegment()
+                    {
+                        Rate = 0,
+                        Level = 0
+                    },
+                    Segment1Loop = false,
+                    Segment2Loop = false
+                }
+            },
+            {
+                "padFast",
+                new HarmonicEnvelope()
+                {
+                    Segment0 = new EnvelopeSegment()
+                    {
+                        Rate = 83,
+                        Level = 63
+                    },
+                    Segment1 = new EnvelopeSegment()
+                    {
+                        Rate = 63,
+                        Level = 63
+                    },
+                    Segment2 = new EnvelopeSegment()
+                    {
+                        Rate = 64,
+                        Level = 63
+                    },
+                    Segment3 = new EnvelopeSegment()
+                    {
+                        Rate = 52,
+                        Level = 0
+                    },
+                    Segment1Loop = false,
+                    Segment2Loop = false
+                }
+            },
+            {
+                "padSlow",
+                new HarmonicEnvelope()
+                {
+                    Segment0 = new EnvelopeSegment()
+                    {
+                        Rate = 67,
+                        Level = 63
+                    },
+                    Segment1 = new EnvelopeSegment()
+                    {
+                        Rate = 63,
+                        Level = 63
+                    },
+                    Segment2 = new EnvelopeSegment()
+                    {
+                        Rate = 64,
+                        Level = 63
+                    },
+                    Segment3 = new EnvelopeSegment()
+                    {
+                        Rate = 0,
+                        Level = 0
+                    },
+                    Segment1Loop = false,
+                    Segment2Loop = false
+                }
+            }
+        };
     }
 }

@@ -22,12 +22,12 @@ namespace K5KTool
             { "square", new LeiterParameters { A = 1.0, B = 1.0, C = 0.0, XP = 0.5, D = 0.0, E = 0.0, YP = 0.0 } },
             { "triangle", new LeiterParameters { A = 2.0, B = 1.0, C = 0.0, XP = 0.5, D = 0.0, E = 0.0, YP = 0.0 } },
             { "pulse20", new LeiterParameters { A = 1.0, B = 1.0, C = 0.0, XP = 0.2, D = 0.0, E = 0.0, YP = 0.0 } },
-            { "pluckedstring", new LeiterParameters { A = 2.0, B = 1.0, C = 0.0, XP = 0.2, D = 0.0, E = 0.0, YP = 0.0 } },  // 20% uneven triangle
+            { "pluckedString", new LeiterParameters { A = 2.0, B = 1.0, C = 0.0, XP = 0.2, D = 0.0, E = 0.0, YP = 0.0 } },  // 20% uneven triangle
             { "brassy", new LeiterParameters { A = 2.0, B = 2.0, C = 0.0, XP = 0.1, D = 0.0, E = 0.0, YP = 0.0 } },  // 10% triangular pulse
-            { "analogsquare", new LeiterParameters { A = 3.0, B = 1.0, C = 0.0, XP = 0.48, D = 2.0, E = 0.0, YP = 0.035 } },
+            { "analogSquare", new LeiterParameters { A = 3.0, B = 1.0, C = 0.0, XP = 0.48, D = 2.0, E = 0.0, YP = 0.035 } },
             { "oboe", new LeiterParameters { A = 0.4, B = 1.0, C = 0.0, XP = 0.12, D = 0.0, E = 1.0, YP = 0.47 } },
             { "trombone", new LeiterParameters { A = 2.0, B = 1.0, C = 0.0, XP = 0.045, D = 1.0, E = 1.0, YP = 0.0625 } },
-            { "frenchhorn", new LeiterParameters { A = 2.0, B = 1.0, C = 0.0, XP = 0.09, D = 1.0, E = 0.0, YP = 0.13 } }
+            { "frenchHorn", new LeiterParameters { A = 2.0, B = 1.0, C = 0.0, XP = 0.09, D = 1.0, E = 0.0, YP = 0.13 } }
         };
 
         public static double Compute(int number, LeiterParameters para)
