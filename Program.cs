@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using K5KLib;
+using CommandLine;
 
 namespace K5KTool
 {
@@ -152,6 +153,8 @@ namespace K5KTool
 
         static int Main(string[] args)
         {
+            var parserResult = Parser.Default.ParseArguments<CreateOptions>(args);
+
             if (args.Length < 2)
             {
                 System.Console.WriteLine("Usage: K5KTool cmd filename.syx");
