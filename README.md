@@ -117,4 +117,7 @@ article [Building a command line tool using the Swift Package Manager](https://w
 For reasons I have actually forgotten, I made the decision to go back to
 C# for the fifth and final interation. I think it may have had something
 to do with the desire to run this utility in Windows, and hopefully develop
-a GUI for a K5000 patch editor for Windows 10 as a UWP application
+a GUI for a K5000 patch editor for Windows 10 as a UWP application.
+
+The actual patch management utilities have now been moved to a separate
+repository, containing a .NET Standard library packaged with NuGet.
