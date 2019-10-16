@@ -2,6 +2,7 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Text;
+using K5KLib;
 
 namespace K5KTool
 {
@@ -197,18 +198,18 @@ namespace K5KTool
                     byte[] commonData = new byte[CommonSettings.DataSize + Source.DataSize];
                     Buffer.BlockCopy(data, 0, commonData, 0, CommonSettings.DataSize + Source.DataSize);
                     //System.Console.WriteLine(Util.HexDump(commonData));
-                    Single single = new Single(commonData);
+                    K5KLib.Single single = new K5KLib.Single(commonData);
                     System.Console.WriteLine(single.Common.Name);
                 }
                 else if (command.Equals("dump"))   // show all patch information
                 {
                     System.Console.WriteLine(String.Format("Original data (length = {0} bytes):\n{1}", data.Length, Util.HexDump(data)));
-                    Single single = new Single(data);
+                    K5KLib.Single single = new K5KLib.Single(data);
                     System.Console.WriteLine(single.ToString());
                 }
                 else if (command.Equals("create"))
                 {
-                    Single single = NewSinglePatch("NewSound");
+                    K5KLib.Single single = NewSinglePatch("NewSound");
                     byte[] singleData = single.ToData();
                     System.Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
                     System.Console.WriteLine(Util.HexDump(singleData));
@@ -218,9 +219,9 @@ namespace K5KTool
             return 0;
         }
 
-        static Single NewSinglePatch(string patchName)
+        static K5KLib.Single NewSinglePatch(string patchName)
         {
-            Single single = new Single();
+            K5KLib.Single single = new K5KLib.Single();
 
             single.Common.Name = patchName;
             single.Common.Volume = 115;
