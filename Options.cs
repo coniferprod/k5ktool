@@ -5,10 +5,10 @@ namespace K5KTool
     [Verb("create", HelpText="Create a new patch.")]
     public class CreateOptions
     {
-        [Option]
+        [Option('t', "type", Required = true, HelpText = "Patch type (single or multi).")]
         public string PatchType { get; set; }
         
-        [Option]
+        [Option('o', "output", Required = true, HelpText = "Output file.")]
         public string OutputFileName { get; set; }
     }
 

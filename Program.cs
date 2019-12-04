@@ -135,11 +135,11 @@ namespace K5KTool
             string waveformName = "pluckedString";
             int numHarmonics = 64;
             byte[] levels = LeiterEngine.GetHarmonicLevels(waveformName, numHarmonics, 127);  // levels are 0...127
-            System.Console.WriteLine(String.Format("{0}, {1} harmonics:", waveformName, numHarmonics));
+            Console.WriteLine(String.Format("{0}, {1} harmonics:", waveformName, numHarmonics));
             single.Sources[0].ADD.SoftHarmonics = levels;
             for (int i = 0; i < levels.Length; i++)
             {
-                System.Console.WriteLine(String.Format("{0} = {1}", i + 1, levels[i]));
+                Console.WriteLine(String.Format("{0} = {1}", i + 1, levels[i]));
             }
 
             // Harmonic envelopes
@@ -244,12 +244,8 @@ namespace K5KTool
 
             // Extract the patch bytes (discarding the SysEx header and terminator)
             int dataLength = message.Length - SystemExclusiveHeader.DataSize - 1;
-            //System.Console.WriteLine($"data length = {dataLength}");
             byte[] data = new byte[dataLength];
             Array.Copy(message, SystemExclusiveHeader.DataSize, data, 0, dataLength);
-
-            // TODO: Split the data into chunks representing single, multi, drum, and effect data
-            //Console.WriteLine(String.Format("Total data length = {0} bytes", data.Length));
 
             string outputFormat = opts.Output;
             if (outputFormat.Equals("text"))
@@ -273,6 +269,21 @@ namespace K5KTool
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("SINGLE patches:\n");
+
+            int offset = 0;
+            for (int i = 0; i < SinglePatchCount; i++)
+            {
+                byte[] singleData = new byte[SinglePatch.DataSize];
+                Buffer.BlockCopy(data, offset, singleData, 0, SinglePatch.DataSize);
+                SinglePatch single = new SinglePatch(singleData);
+                string name = PatchUtil.GetPatchName(i);
+                sb.Append($"S{name}  {single.Name}\n");
+                if ((i + 1) % 16 == 0) {
+                    sb.Append("\n");
+                }
+                offset += SinglePatch.DataSize;
+            }
+            sb.Append("\n");
 
             return sb.ToString();
         }
@@ -320,19 +331,19 @@ namespace K5KTool
             Console.WriteLine("{0}", header);
             Dictionary<SystemExclusiveFunction, string> functionNames = new Dictionary<SystemExclusiveFunction, string>()
             {
-                { SystemExclusiveFunction.AllPatchDataDump, "All Patch Data Dump" },
-                { SystemExclusiveFunction.AllPatchDumpRequest, "All Patch Data Dump Request" },
-                { SystemExclusiveFunction.BlockPatchDataDump, "Block Patch Data Dump" },
-                { SystemExclusiveFunction.BlockPatchDumpRequest, "Block Patch Data Dump Request" },
-                { SystemExclusiveFunction.EditBufferDump, "Edit Buffer Dump" },
-                { SystemExclusiveFunction.OnePatchDataDump, "One Patch Data Dump" },
-                { SystemExclusiveFunction.OnePatchDumpRequest, "One Patch Data Dump Request" },
+                { SystemExclusiveFunction.OneBlockDumpRequest, "One Block Dump Request" },
+                { SystemExclusiveFunction.AllBlockDumpRequest, "All Block Dump Request" },
                 { SystemExclusiveFunction.ParameterSend, "Parameter Send" },
-                { SystemExclusiveFunction.ProgramChange, "Program Change" },
+                { SystemExclusiveFunction.TrackControl, "Track Control" },
+                { SystemExclusiveFunction.OneBlockDump, "One Block Dump" },
+                { SystemExclusiveFunction.AllBlockDump, "All Block Dump" },
+                { SystemExclusiveFunction.ModeChange, "Mode Change" },
+                { SystemExclusiveFunction.Remote, "Remote" },
                 { SystemExclusiveFunction.WriteComplete, "Write Complete" },
                 { SystemExclusiveFunction.WriteError, "Write Error" },
-                { SystemExclusiveFunction.WriteErrorNoCard, "Write Error (No Card)" },
-                { SystemExclusiveFunction.WriteErrorProtect, "Write Error (Protect)" }
+                { SystemExclusiveFunction.WriteErrorByProtect, "Write Error (Protect)" },
+                { SystemExclusiveFunction.WriteErrorByMemoryFull, "Write Error (Memory Full)" },
+                { SystemExclusiveFunction.WriteErrorByNoExpandMemory, "Write Error (No Expansion Memory)" }
             };
 
             SystemExclusiveFunction function = (SystemExclusiveFunction)header.Function;
@@ -345,7 +356,6 @@ namespace K5KTool
             {
                 Console.WriteLine("Unknown function: {0}", function);
             }
-
         }
 
         public static int RunInitAndReturnExitCode(InitOptions opts)
