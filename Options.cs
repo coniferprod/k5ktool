@@ -7,6 +7,9 @@ namespace K5KTool
     {
         [Option('t', "type", Required = true, HelpText = "Patch type (single or multi).")]
         public string PatchType { get; set; }
+
+        [Option('d', "descriptor", Required = false, HelpText = "Descriptor file in JSON format")]
+        public string Descriptor { get; set; }
         
         [Option('o', "output", Required = true, HelpText = "Output file.")]
         public string OutputFileName { get; set; }

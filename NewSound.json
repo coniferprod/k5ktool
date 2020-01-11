@@ -1,0 +1,17 @@
+{
+    "Name": "NewSound",
+    "Bank": "D",
+    "PatchNumber": 32,
+    "Sources": [
+        {
+            "WaveNumber": 512,
+            "WaveformName": "saw",
+            "HarmonicEnvelopeName": "pluck"
+        },
+        {
+            "WaveNumber": 342,
+            "WaveformName": "Not used for PCM source",
+            "HarmonicEnvelopeName": "Not used for PCM source"
+        }
+    ]
+}

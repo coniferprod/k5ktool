@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 
+using Newtonsoft.Json;
+
 using KSynthLib.K5000;
 
 namespace K5KTool
@@ -151,30 +153,47 @@ namespace K5KTool
             }
         };
 
-        public SinglePatchGenerator()
+        public SinglePatchDescriptor Descriptor;
+
+        public SinglePatchGenerator(SinglePatchDescriptor descriptor)
         {
+            this.Descriptor = descriptor;
 
         }
 
-        public SinglePatch Generate(string patchName)
+        public SinglePatch Generate()
         {
             SinglePatch single = new SinglePatch();
 
-            single.Common.Name = patchName;
+            single.Common.Name = Descriptor.Name;
             single.Common.Volume = 115;
-            single.SingleCommon.NumSources = 2;
+            single.SingleCommon.NumSources = Descriptor.Sources.Count;
             single.SingleCommon.IsPortamentoEnabled = false;
             single.SingleCommon.PortamentoSpeed = 0;
 
             single.Sources = new Source[single.SingleCommon.NumSources];
 
-            single.Sources[0] = GenerateAdditiveSource();
-            single.Sources[1] = GeneratePCMSource();
+            for (int i = 0; i < single.SingleCommon.NumSources; i++)
+            {
+                single.Sources[i] = GenerateSource(Descriptor.Sources[i]);
+            }
 
             return single;
         }
 
-        private Source GenerateAdditiveSource()
+        private Source GenerateSource(SourceDescriptor descriptor)
+        {
+            if (descriptor.WaveNumber == AdditiveKit.WaveNumber)
+            {
+                return GenerateAdditiveSource(descriptor.WaveformName, descriptor.HarmonicEnvelopeName);
+            }
+            else
+            {
+                return GeneratePCMSource(descriptor.WaveNumber);
+            }
+        }
+
+        private Source GenerateAdditiveSource(string waveformName, string harmonicEnvelopeName)
         {
             Source source = new Source();
             source.ZoneLow = 0;
@@ -255,7 +274,6 @@ namespace K5KTool
             source.DCA.VelocitySensitivity.ReleaseTime = 20;
 
             // Harmonic levels
-            string waveformName = "saw";
             int numHarmonics = 64;
             byte[] levels = LeiterEngine.GetHarmonicLevels(waveformName, numHarmonics, 127);  // levels are 0...127
             Console.WriteLine(String.Format("{0}, {1} harmonics:", waveformName, numHarmonics));
@@ -266,7 +284,7 @@ namespace K5KTool
             }
 
             // Harmonic envelopes
-            HarmonicEnvelope harmEnv = HarmEnv["pluck"];
+            HarmonicEnvelope harmEnv = HarmEnv[harmonicEnvelopeName];
             for (int i = 0; i < AdditiveKit.NumHarmonics; i++)
             {
                 source.ADD.HarmonicEnvelopes[i] = harmEnv;
@@ -275,7 +293,7 @@ namespace K5KTool
             return source;
         }
 
-        private Source GeneratePCMSource()
+        private Source GeneratePCMSource(int waveNumber)
         {
             Source source = new Source();
 
@@ -293,7 +311,7 @@ namespace K5KTool
             source.NormalPanValue = 0;
 
             // DCO
-            source.DCO.WaveNumber = 412;
+            source.DCO.WaveNumber = waveNumber;
             source.DCO.Coarse = 0;
             source.DCO.Fine = 0;
             source.DCO.KSPitch = KeyScalingToPitch.ZeroCent;

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 
 using CommandLine;
+using Newtonsoft.Json;
 
 using KSynthLib.Common;
 using KSynthLib.K5000;
@@ -68,30 +69,47 @@ namespace K5KTool
                     return -1;
             }
 
+            List<byte> allData = new List<byte>();
+            // SysEx initiator and basic header data
+            allData.Add(SystemExclusiveHeader.Initiator);
+            allData.AddRange(header.ToData());
+
+            // Additional header data as required
+            int patchNumber = opts.PatchNumber - 1;
+            if (patchNumber < 0 || patchNumber > 127)
+            {
+                Console.WriteLine("Patch number must be 1...128");
+                return -1;
+            }                
+            allData.Add((byte)patchNumber);
+
             if (opts.PatchType.Equals("single"))
             {
-                SinglePatchGenerator generator = new SinglePatchGenerator();
-                SinglePatch single = generator.Generate("NewSound");
-                byte[] singleData = single.ToData();
-                Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
-
-                List<byte> allData = new List<byte>();
-
-                // SysEx initiator and basic header data
-                allData.Add(SystemExclusiveHeader.Initiator);
-                allData.AddRange(header.ToData());
-
-                // Additional header data as required
-                int patchNumber = opts.PatchNumber - 1;
-                if (patchNumber < 0 || patchNumber > 127)
+                if (!string.IsNullOrEmpty(opts.Descriptor))  // we have a JSON descriptor file, parse it
                 {
-                    Console.WriteLine("Patch number must be 1...128");
-                    return -1;
-                }                
-                allData.Add((byte)patchNumber);
+                    var jsonText = File.ReadAllText(opts.Descriptor);
+                    var descriptor = JsonConvert.DeserializeObject<SinglePatchDescriptor>(jsonText);
 
-                // The actual patch data
-                allData.AddRange(singleData);
+                    SinglePatchGenerator generator = new SinglePatchGenerator(descriptor);
+                    SinglePatch single = generator.Generate();
+
+                    byte[] singleData = single.ToData();
+                    Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
+
+                    allData.AddRange(singleData);
+                }
+                else
+                {
+                    SinglePatchDescriptor descriptor = new SinglePatchDescriptor();
+
+                    SinglePatchGenerator generator = new SinglePatchGenerator(descriptor);
+                    SinglePatch single = generator.Generate();
+
+                    byte[] singleData = single.ToData();
+                    Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
+
+                    allData.AddRange(singleData);
+                }
 
                 allData.Add(SystemExclusiveHeader.Terminator);
 
