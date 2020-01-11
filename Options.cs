@@ -10,6 +10,12 @@ namespace K5KTool
         
         [Option('o', "output", Required = true, HelpText = "Output file.")]
         public string OutputFileName { get; set; }
+
+        [Option('b', "bank", Required = true, HelpText = "Bank name (A, D, E, F)")]
+        public string BankName { get; set; }
+
+        [Option('n', "number", Required = true, HelpText = "Patch number (1...128)")]
+        public int PatchNumber { get; set; }
     }
 
     [Verb("list", HelpText = "List contents of bank.")]

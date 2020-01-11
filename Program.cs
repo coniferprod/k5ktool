@@ -34,11 +34,75 @@ namespace K5KTool
 
         public static int RunCreateAndReturnExitCode(CreateOptions opts)
         {
-            SinglePatchGenerator generator = new SinglePatchGenerator();
-            SinglePatch single = generator.Generate("NewSound");
-            byte[] singleData = single.ToData();
-            Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
-            Console.WriteLine(Util.HexDump(singleData));
+            SystemExclusiveHeader header = new SystemExclusiveHeader();
+            header.ManufacturerID = 0x40;  // Kawai
+            header.Channel = 0x00;
+            header.Function = (byte)SystemExclusiveFunction.OneBlockDump;
+            header.Group = 0x00;
+            header.MachineID = 0x0A;
+            header.Substatus1 = 0x00;  // single
+
+            // Get the right bank. Since it is a required parameter, I suppose we can trust that it exists.
+            string bankName = opts.BankName.ToLower();
+            char ch = bankName[0];
+            switch (ch)
+            {
+                case 'a':
+                    header.Substatus2 = 0x00;
+                    break;
+
+                case 'd':
+                    header.Substatus2 = 0x02;
+                    break;
+
+                case 'e':
+                    header.Substatus2 = 0x03;
+                    break;
+
+                case 'f':
+                    header.Substatus2 = 0x04;
+                    break;
+
+                default:
+                    Console.WriteLine(String.Format("Unknown bank: '{0}'", opts.BankName));
+                    return -1;
+            }
+
+            if (opts.PatchType.Equals("single"))
+            {
+                SinglePatchGenerator generator = new SinglePatchGenerator();
+                SinglePatch single = generator.Generate("NewSound");
+                byte[] singleData = single.ToData();
+                Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
+
+                List<byte> allData = new List<byte>();
+
+                // SysEx initiator and basic header data
+                allData.Add(SystemExclusiveHeader.Initiator);
+                allData.AddRange(header.ToData());
+
+                // Additional header data as required
+                int patchNumber = opts.PatchNumber - 1;
+                if (patchNumber < 0 || patchNumber > 127)
+                {
+                    Console.WriteLine("Patch number must be 1...128");
+                    return -1;
+                }                
+                allData.Add((byte)patchNumber);
+
+                // The actual patch data
+                allData.AddRange(singleData);
+
+                allData.Add(SystemExclusiveHeader.Terminator);
+
+                Console.WriteLine(Util.HexDump(allData.ToArray()));
+            }
+            else if (opts.PatchType.Equals("multi"))
+            {
+                Console.WriteLine("Don't know how to make a multi patch yet");
+                return 1;
+            }
+
             return 0;
         }
 
@@ -83,7 +147,7 @@ namespace K5KTool
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("SINGLE patches:\n");
-
+/*
             int offset = 0;
             for (int i = 0; i < SinglePatchCount; i++)
             {
@@ -98,7 +162,7 @@ namespace K5KTool
                 offset += SinglePatch.DataSize;
             }
             sb.Append("\n");
-
+*/
             return sb.ToString();
         }
 
@@ -115,6 +179,9 @@ namespace K5KTool
 
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
+
+
+            SystemExclusiveHeader header = new SystemExclusiveHeader(fileData);
 
             return 0;
         }
@@ -169,6 +236,64 @@ namespace K5KTool
             else
             {
                 Console.WriteLine("Unknown function: {0}", function);
+            }
+
+            switch (header.Substatus1)
+            {
+                case 0x00:
+                    Console.WriteLine("Single");
+                    break;
+
+                case 0x20:
+                    Console.WriteLine("Multi");
+                    break;
+
+                case 0x10:
+                    Console.WriteLine("Drum Kit");  // K5000W only
+                    break;
+
+                case 0x11:
+                    Console.WriteLine("Drum Inst");  // K5000W only
+                    break;
+
+                default:
+                    Console.WriteLine(String.Format("Unknown substatus1: {0:X2}", header.Substatus1));
+                    break;
+            }
+
+            switch (header.Substatus2)
+            {
+                case 0x00:
+                    Console.WriteLine("Add Bank A");
+                    break;
+
+                case 0x01:
+                    Console.WriteLine("PCM Bank B");  // K5000W
+                    break;
+
+                case 0x02:
+                    Console.WriteLine("Add Bank D");
+                    break;
+
+                case 0x03:
+                    Console.WriteLine("Exp Bank E");
+                    break;
+
+                case 0x04:
+                    Console.WriteLine("Exp Bank F");
+                    break;
+
+                default:
+                    Console.WriteLine("Substatus2 is first data byte");
+                    break;
+            }
+
+            if (function == SystemExclusiveFunction.OneBlockDump)
+            {
+            }
+            else if (function == SystemExclusiveFunction.AllBlockDump)
+            {
+
             }
         }
 
