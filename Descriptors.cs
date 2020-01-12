@@ -6,15 +6,15 @@ namespace K5KTool
     public class SourceDescriptor
     {
         public int WaveNumber { get; set; }
-        public string WaveformName { get; set; }
-        public string HarmonicEnvelopeName { get; set; }   
+        public string WaveformTemplateName { get; set; }
+        public string HarmonicLevelTemplateName { get; set; }
+        public string HarmonicEnvelopeTemplateName { get; set; }
+        public string FormantFilterTemplateName { get; set; }
     }
 
     public class SinglePatchDescriptor
     {
         public string Name { get; set; }
-        public string Bank { get; set; }
-        public int PatchNumber { get; set; }
         public List<SourceDescriptor> Sources { get; set; }
     }
 }

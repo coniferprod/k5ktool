@@ -89,31 +89,27 @@ namespace K5KTool
                 {
                     var jsonText = File.ReadAllText(opts.Descriptor);
                     var descriptor = JsonConvert.DeserializeObject<SinglePatchDescriptor>(jsonText);
-
                     SinglePatchGenerator generator = new SinglePatchGenerator(descriptor);
                     SinglePatch single = generator.Generate();
-
                     byte[] singleData = single.ToData();
                     Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
-
+                    Console.WriteLine(single.ToString());
                     allData.AddRange(singleData);
                 }
                 else
                 {
                     SinglePatchDescriptor descriptor = new SinglePatchDescriptor();
-
                     SinglePatchGenerator generator = new SinglePatchGenerator(descriptor);
                     SinglePatch single = generator.Generate();
-
                     byte[] singleData = single.ToData();
                     Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
-
+                    Console.WriteLine(single.ToString());
                     allData.AddRange(singleData);
                 }
 
                 allData.Add(SystemExclusiveHeader.Terminator);
 
-                Console.WriteLine(Util.HexDump(allData.ToArray()));
+                File.WriteAllBytes(opts.OutputFileName, allData.ToArray());
             }
             else if (opts.PatchType.Equals("multi"))
             {
