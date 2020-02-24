@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 using Newtonsoft.Json;
 
@@ -1088,6 +1089,20 @@ namespace K5KTool
         public SinglePatchGenerator(SinglePatchDescriptor descriptor)
         {
             this.Descriptor = descriptor;
+
+            using (StreamReader sr = new StreamReader(@"Templates.json"))
+            using (JsonTextReader reader = new JsonTextReader(sr))
+            while (reader.Read())
+            {
+                if (reader.Value != null)
+                {
+                    //Console.WriteLine("Token: {0}, Value: {1}", reader.TokenType, reader.Value);
+                }
+                else
+                {
+                    //Console.WriteLine("Token: {0}", reader.TokenType);
+                }
+            }
         }
 
         public SinglePatch Generate()
