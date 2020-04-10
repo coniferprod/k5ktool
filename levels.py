@@ -7,7 +7,7 @@ def get_level(harmonic_number, waveform):
     a_max = 1.0
     a = leiter(harmonic_number, waveform)
     v = math.log(math.fabs(a / a_max), 2.0)
-    #print('a_max = {}, v = {}'.format(a_max, v))
+    print('a_max = {}, v = {}'.format(a_max, v))
     level = 127 + 8 * v
     if level < 0:
         return 0
