@@ -27,6 +27,9 @@ namespace K5KTool
         [Option('f', "filename", Required = true, HelpText = "Input file to be processed.")]
         public string FileName { get; set; }
 
+        [Option('t', "type", Required = true, HelpText = "Type of input file ('sysex' or 'bank')")]
+        public string Type { get; set; }
+        
         [Option('o', "output", Required = true, HelpText = "Output file format ('text' or 'html')")]
         public string Output { get; set; }
     }

@@ -11,7 +11,6 @@ using KSynthLib.K5000;
 
 namespace K5KTool
 {
-
     class Program
     {
         public const int SinglePatchCount = 128;  // banks A and D have 128 patches each
@@ -122,22 +121,39 @@ namespace K5KTool
 
         public static int RunListAndReturnExitCode(ListOptions opts)
         {
-            Console.WriteLine("List");
-
             string fileName = opts.FileName;
-            byte[] message = File.ReadAllBytes(fileName);
+            byte[] allData = File.ReadAllBytes(fileName);
             string namePart = new DirectoryInfo(fileName).Name;
             DateTime timestamp = File.GetLastWriteTime(fileName);
             string timestampString = timestamp.ToString("yyyy-MM-dd hh:mm:ss");
-            Console.WriteLine($"System Exclusive file: '{namePart}' ({timestampString}, {message.Length} bytes)");
+            Console.WriteLine($"System Exclusive file: '{namePart}' ({timestampString}, {allData.Length} bytes)");
 
-            SystemExclusiveHeader header = new SystemExclusiveHeader(message);
-            // TODO: Check the SysEx file header for validity
+            byte[] data;
+            int dataLength;
 
-            // Extract the patch bytes (discarding the SysEx header and terminator)
-            int dataLength = message.Length - SystemExclusiveHeader.DataSize - 1;
-            byte[] data = new byte[dataLength];
-            Array.Copy(message, SystemExclusiveHeader.DataSize, data, 0, dataLength);
+            if (opts.Type.Equals("sysex"))
+            {
+                SystemExclusiveHeader header = new SystemExclusiveHeader(allData);
+                // TODO: Check the SysEx file header for validity
+
+                // Extract the patch bytes (discarding the SysEx header and terminator)
+                dataLength = allData.Length - SystemExclusiveHeader.DataSize - 1;
+
+                data = new byte[dataLength];
+                Array.Copy(allData, SystemExclusiveHeader.DataSize, data, 0, dataLength);
+            }
+            else if (opts.Type.Equals("bank"))
+            {
+                dataLength = allData.Length;
+                data = allData;
+                Console.WriteLine("Sorry, don't know how to handle bank files yet!");
+                return 1;
+            }
+            else
+            {
+                Console.WriteLine($"Unknown file type: {opts.Type}");
+                return -1;
+            }
 
             string outputFormat = opts.Output;
             if (outputFormat.Equals("text"))
@@ -161,6 +177,7 @@ namespace K5KTool
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("SINGLE patches:\n");
+
 /*
             int offset = 0;
             for (int i = 0; i < SinglePatchCount; i++)
@@ -177,6 +194,7 @@ namespace K5KTool
             }
             sb.Append("\n");
 */
+
             return sb.ToString();
         }
 
@@ -193,7 +211,6 @@ namespace K5KTool
 
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
-
 
             SystemExclusiveHeader header = new SystemExclusiveHeader(fileData);
 
@@ -316,6 +333,5 @@ namespace K5KTool
             Console.WriteLine("Init");
             return 0;
         }
-
     }
 }
