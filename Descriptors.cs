@@ -16,5 +16,10 @@ namespace K5KTool
     {
         public string Name { get; set; }
         public List<SourceDescriptor> Sources { get; set; }
+
+        public SinglePatchDescriptor()
+        {
+            Sources = new List<SourceDescriptor>();
+        }
     }
 }

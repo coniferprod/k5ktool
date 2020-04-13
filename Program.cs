@@ -79,32 +79,31 @@ namespace K5KTool
             {
                 Console.WriteLine("Patch number must be 1...128");
                 return -1;
-            }                
+            }
             allData.Add((byte)patchNumber);
+
+            SinglePatchGenerator generator;
+            SinglePatchDescriptor descriptor;
 
             if (opts.PatchType.Equals("single"))
             {
                 if (!string.IsNullOrEmpty(opts.Descriptor))  // we have a JSON descriptor file, parse it
                 {
                     var jsonText = File.ReadAllText(opts.Descriptor);
-                    var descriptor = JsonConvert.DeserializeObject<SinglePatchDescriptor>(jsonText);
-                    SinglePatchGenerator generator = new SinglePatchGenerator(descriptor);
-                    SinglePatch single = generator.Generate();
-                    byte[] singleData = single.ToData();
-                    Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
-                    Console.WriteLine(single.ToString());
-                    allData.AddRange(singleData);
+                    descriptor = JsonConvert.DeserializeObject<SinglePatchDescriptor>(jsonText);
+                    generator = new SinglePatchGenerator(descriptor);
                 }
                 else
                 {
-                    SinglePatchDescriptor descriptor = new SinglePatchDescriptor();
-                    SinglePatchGenerator generator = new SinglePatchGenerator(descriptor);
-                    SinglePatch single = generator.Generate();
-                    byte[] singleData = single.ToData();
-                    Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
-                    Console.WriteLine(single.ToString());
-                    allData.AddRange(singleData);
+                    descriptor = new SinglePatchDescriptor();
+                    generator = new SinglePatchGenerator(descriptor);
                 }
+
+                SinglePatch single = generator.Generate();
+                byte[] singleData = single.ToData();
+                Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
+                Console.WriteLine(single.ToString());
+                allData.AddRange(singleData);
 
                 allData.Add(SystemExclusiveHeader.Terminator);
 
@@ -166,7 +165,7 @@ namespace K5KTool
                 Console.WriteLine(MakeHtmlList(data, namePart));
                 return 0;
             }
-            else 
+            else
             {
                 Console.WriteLine(String.Format($"Unknown output format: '{outputFormat}'"));
                 return -1;
