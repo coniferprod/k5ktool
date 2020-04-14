@@ -1,12 +1,12 @@
 # k5ktool
 
-Patch management utilities for the 
+Patch management utilities for the
 [Kawai K5000](https://en.wikipedia.org/wiki/Kawai_K5000)
 Advanced Additive Synthesizer (1996).
 
 _(work in progress)_
 
-Requires .NET Core 2.1 or later.
+Requires .NET Core 3.1 or later.
 
 ## File formats
 
@@ -22,20 +22,20 @@ environments. The source code is available for some of these, and it has
 been a huge help in making sense of the KAA and KA1 formats.
 
 The Kawai K5000 MIDI implementation documents the structure of the
-single and multi patches and data dumps which appear inside the files, 
+single and multi patches and data dumps which appear inside the files,
 but does not go into detail about the KAA and KA1 files themselves.
 
 This utility does not deal with the native Kawai K5000 patch formats.
 Those formats are effectively a dump of the K5000 internal memory, and
 contain pointers to different parts of the data files. Since we can
 just as well transfer patches back and forth using MIDI System Exclusive
-messages, either individually or as bulk dumps, we can ignore the native 
+messages, either individually or as bulk dumps, we can ignore the native
 KAA and KA1 formats.
 
 ## Working with MIDI System Exclusive messages
 
-Using the [SendMIDI](https://github.com/gbevin/SendMIDI) 
-and [ReceiveMIDI](https://github.com/gbevin/ReceiveMIDI) utilities 
+Using the [SendMIDI](https://github.com/gbevin/SendMIDI)
+and [ReceiveMIDI](https://github.com/gbevin/ReceiveMIDI) utilities
 by [Geert Bevin](https://github.com/gbevin). Refer to the instructions
 of these programs for details.
 
@@ -58,7 +58,7 @@ Start receiving from the MIDI port:
 
     receivemidi dev $MIDI_PORT_NAME
 
-Note that the Kawai K5000 features active sensing, so you will start to see `active-sensing` 
+Note that the Kawai K5000 features active sensing, so you will start to see `active-sensing`
 messages arriving from the unit.
 
 In the second terminal, send a System Exclusive message with an ID request to the unit:
@@ -93,22 +93,22 @@ gained a lot of popularity recently (2016-2018), and seemed to fit well
 to the task of reading a binary file and processing the information. This
 was my second serious attempt at Go, and I got a little further this time.
 I was starting to feel almost comfortable with the language constructs,
-even though there is a certain C-like terseness to Go that does not really 
+even though there is a certain C-like terseness to Go that does not really
 feel too comfortable, as it results in lots of code lines. This is something
 that I really need to think about, as there are many things I like about Go.
 
 Apart from learning, my earlier language choices reflected the desire to
 run the application on both macOS and Windows, and possibly also Linux
 (on the Raspberry Pi). This ruled out Swift, which would have been my
-first choice in other circumstances. However, as I was writing an iOS 
+first choice in other circumstances. However, as I was writing an iOS
 application in Swift at the same time, it suddently struck me: maybe it
 is not so important to be able to run this on many platforms, after all.
-What if I just used Swift and got it over with? I would end up with a 
+What if I just used Swift and got it over with? I would end up with a
 command-line utility for macOS (or, in a pinch, Linux), but I don't think
 I care that much, since I will be making most use of it on the Mac anyway.
 
-So, the fourth language for this utility was Swift version 4.2, developed 
-in Xcode 10. The learning purpose has been fulfilled; I am now better versed 
+So, the fourth language for this utility was Swift version 4.2, developed
+in Xcode 10. The learning purpose has been fulfilled; I am now better versed
 in all of these languages than I was when I started.
 
 For the Swift version I was heavily influenced by John Sundell's

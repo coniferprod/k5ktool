@@ -19,7 +19,18 @@ namespace K5KTool
 
         public SinglePatchDescriptor()
         {
+            Name = "NewSound";
             Sources = new List<SourceDescriptor>();
+
+            SourceDescriptor s1d = new SourceDescriptor();
+            s1d.HarmonicLevelTemplateName = "Saw soft";
+            s1d.HarmonicEnvelopeTemplateName = "E-Piano";
+            Sources.Add(s1d);
+
+            SourceDescriptor s2d = new SourceDescriptor();
+            s1d.WaveNumber = 411;  // "Syn Saw1 Cyc"
+            s1d.FormantFilterTemplateName = "Init";
+            Sources.Add(s2d);
         }
     }
 }

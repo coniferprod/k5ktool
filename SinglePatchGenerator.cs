@@ -82,15 +82,15 @@ namespace K5KTool
         {
             SinglePatch single = new SinglePatch();
 
-            single.Common.Name = Descriptor.Name;
-            single.Common.Volume = 115;
-            single.SingleCommon.NumSources = Descriptor.Sources.Count;
+            single.SingleCommon.Name = Descriptor.Name;
+            single.SingleCommon.Volume = 115;
+            single.SingleCommon.SourceCount = Descriptor.Sources.Count;
             single.SingleCommon.IsPortamentoEnabled = false;
             single.SingleCommon.PortamentoSpeed = 0;
 
-            single.Sources = new Source[single.SingleCommon.NumSources];
+            single.Sources = new Source[single.SingleCommon.SourceCount];
 
-            for (int i = 0; i < single.SingleCommon.NumSources; i++)
+            for (int i = 0; i < single.SingleCommon.SourceCount; i++)
             {
                 single.Sources[i] = GenerateSource(Descriptor.Sources[i]);
             }
@@ -120,8 +120,8 @@ namespace K5KTool
             source.ZoneLow = 0;
             source.ZoneHigh = 127;
             VelocitySwitchSettings vel = new VelocitySwitchSettings();
-            vel.Type = VelocitySwitchType.Off;
-            vel.Velocity = 68;
+            vel.SwitchType = VelocitySwitchType.Off;
+            vel.Threshold = 68;
             source.VelocitySwitch = vel;
 
             source.Volume = 120;
@@ -130,7 +130,7 @@ namespace K5KTool
             source.BenderCutoff = 12;
             source.BenderPitch = 2;
             source.Pan = PanType.Normal;
-            source.NormalPanValue = 0;
+            source.PanValue = 0;
 
             // DCO settings for additive source
             source.DCO.WaveNumber = AdditiveKit.WaveNumber;
@@ -263,8 +263,8 @@ namespace K5KTool
             Source source = new Source();
 
             VelocitySwitchSettings vel = new VelocitySwitchSettings();
-            vel.Type = VelocitySwitchType.Off;
-            vel.Velocity = 68;
+            vel.SwitchType = VelocitySwitchType.Off;
+            vel.Threshold = 68;
             source.VelocitySwitch = vel;
 
             source.Volume = 120;
@@ -273,7 +273,7 @@ namespace K5KTool
             source.BenderCutoff = 12;
             source.BenderPitch = 2;
             source.Pan = PanType.Normal;
-            source.NormalPanValue = 0;
+            source.PanValue = 0;
 
             // DCO
             source.DCO.WaveNumber = waveNumber;
