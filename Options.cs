@@ -10,7 +10,7 @@ namespace K5KTool
 
         [Option('d', "descriptor", Required = false, HelpText = "Descriptor file in JSON format")]
         public string Descriptor { get; set; }
-        
+
         [Option('o', "output", Required = true, HelpText = "Output file.")]
         public string OutputFileName { get; set; }
 
@@ -29,19 +29,19 @@ namespace K5KTool
 
         [Option('t', "type", Required = true, HelpText = "Type of input file ('sysex' or 'bank')")]
         public string Type { get; set; }
-        
+
         [Option('o', "output", Required = true, HelpText = "Output file format ('text' or 'html')")]
         public string Output { get; set; }
     }
 
-    [Verb("dump", HelpText = "Dump contents of bank.")]
+    [Verb("dump", HelpText = "Dump contents of bank or patch file.")]
     public class DumpOptions
     {
         [Option('f', "filename", Required = true, HelpText = "Input file to be processed.")]
         public string FileName { get; set; }
     }
 
-    [Verb("report", HelpText = "Report on the specified bank.")]
+    [Verb("report", HelpText = "Report on the specified bank or patch file.")]
     public class ReportOptions
     {
         [Option('f', "filename", Required = true, HelpText = "Input file to be processed.")]

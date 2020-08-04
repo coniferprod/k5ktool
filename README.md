@@ -8,6 +8,13 @@ _(work in progress)_
 
 Requires .NET Core 3.1 or later.
 
+## Command-line arguments with dotnet
+
+To pass command-line arguments to the tool instead of having the `dotnet`
+tool intercept them, use the `--` argument, like this:
+
+    dotnet run -- --help
+
 ## File formats
 
 The Kawai K5000 patches are usually stored in two binary file formats:

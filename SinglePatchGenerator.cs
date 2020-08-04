@@ -240,7 +240,7 @@ namespace K5KTool
             }
             Console.WriteLine(String.Format("harmonic envelope template = {0}", harmEnvName));
             HarmonicEnvelope harmEnv = this.harmonicEnvelopeTemplates[harmEnvName];
-            for (int i = 0; i < AdditiveKit.NumHarmonics; i++)
+            for (int i = 0; i < AdditiveKit.HarmonicCount; i++)
             {
                 source.ADD.HarmonicEnvelopes[i] = harmEnv;
             }

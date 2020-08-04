@@ -206,12 +206,10 @@ namespace K5KTool
 
         public static int RunDumpAndReturnExitCode(DumpOptions opts)
         {
-            Console.WriteLine("Dump");
+            Console.WriteLine("Dump not implemented yet");
 
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
-
-            SystemExclusiveHeader header = new SystemExclusiveHeader(fileData);
 
             return 0;
         }
@@ -237,6 +235,8 @@ namespace K5KTool
 
         private static void ProcessMessage(byte[] message)
         {
+            Console.WriteLine($"message length = {message.Length} bytes");
+
             SystemExclusiveHeader header = new SystemExclusiveHeader(message);
 
             Console.WriteLine("{0}", header);
@@ -318,12 +318,32 @@ namespace K5KTool
                     break;
             }
 
-            if (function == SystemExclusiveFunction.OneBlockDump)
+            switch (function)
             {
-            }
-            else if (function == SystemExclusiveFunction.AllBlockDump)
-            {
+                case SystemExclusiveFunction.OneBlockDump:
+                    Console.WriteLine("One Block Dump");
 
+                    int toneNumber = message[8] + 1;
+                    Console.WriteLine($"Tone No = {toneNumber} ({message[8]})");
+                    break;
+
+                case SystemExclusiveFunction.AllBlockDump:
+                    Console.WriteLine("All Block Dump");
+                    break;
+
+                default:
+                    Console.WriteLine($"Unknown function: {function}");
+                    break;
+            }
+
+            // Single additive patch for bank A or D:
+            if (header.Substatus1 == 0x00 && (header.Substatus2 == 0x00 || header.Substatus2 == 0x02))
+            {
+                int dataLength = message.Length - SystemExclusiveHeader.DataSize;
+                byte[] data = new byte[dataLength];
+                Array.Copy(message, SystemExclusiveHeader.DataSize, data, 0, dataLength);
+                SinglePatch patch = new SinglePatch(data);
+                Console.WriteLine($"Name = {patch.SingleCommon.Name}");
             }
         }
 
