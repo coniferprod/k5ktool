@@ -3,12 +3,10 @@ import math
 # waveform: 0 = saw, 1 = square, 2 = triangle
 
 def get_level(harmonic_number, waveform):
-    #a_max = leiter(1, waveform)
-    a_max = 1.0
     a = leiter(harmonic_number, waveform)
-    v = math.log(math.fabs(a / a_max), 2.0)
-    print('a_max = {}, v = {}'.format(a_max, v))
+    v = math.log(math.fabs(a), 2.0)
     level = 127 + 8 * v
+    #print(f'n = {harmonic_number} a = {a} v = {v} level = {level}')
     if level < 0:
         return 0
     else:
@@ -33,13 +31,35 @@ def leiter(n, waveform):
 
     # Should we take absolute values of the sinusoids or not?
     result = module1 * module2 * module3
-    #print('    leiter = {}'.format(result))
     return result
+
+def chunked(lst, n):
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 waveform_names = ['Sawtooth', 'Square', 'Triangle', 'Analog style square']
 for w in range(4):
     print(waveform_names[w])
-    for n in range(32):
-        level = get_level(n + 1, w)
-        print(n + 1, math.floor(level), level)
+    levels = []
+    for n in range(64):
+        harmonic_number = n + 1
+        levels.append(get_level(harmonic_number, w))
+        #print('{: >2} {: >3}'.format(harmonic_number, math.floor(level)))
+
+    groups = chunked(levels, 16)
+    group_index = 0
+    for group in groups:
+        index_line = ''
+        value_line = ''
+        for index, value in enumerate(group):
+            harmonic_number = group_index * 16 + index + 1
+            index_line += '{: >3} '.format(harmonic_number)
+            value_line += '{: >3} '.format(math.floor(value))
+        print(index_line)
+        print(value_line)
+        print()
+        group_index += 1
+
     print('----')
+    print()
+    
