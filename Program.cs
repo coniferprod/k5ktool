@@ -342,6 +342,17 @@ namespace K5KTool
                 int dataLength = message.Length - SystemExclusiveHeader.DataSize;
                 byte[] data = new byte[dataLength];
                 Array.Copy(message, SystemExclusiveHeader.DataSize, data, 0, dataLength);
+                Console.WriteLine(Util.HexDump(data));
+
+                // Chop the data into individual buffers based on the declared sizes
+                int offset = 0;
+                byte checksum = data[offset];
+                offset += 1;
+                byte[] commonData = new byte[SingleCommonSettings.DataSize];
+                Array.Copy(data, offset, commonData, 0, SingleCommonSettings.DataSize);
+                Console.WriteLine(Util.HexDump(commonData));
+                offset += SingleCommonSettings.DataSize;
+
                 SinglePatch patch = new SinglePatch(data);
                 Console.WriteLine($"Name = {patch.SingleCommon.Name}");
             }
