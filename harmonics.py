@@ -7,7 +7,7 @@ max_level = 127
 
 def get_level(amplitude):
     """ Convert amplitude to synth harmonic level setting."""
-    return max_level + (8 * math.log2(abs(amplitude)))
+    return math.floor(max_level + (8 * math.log2(abs(amplitude))))
 
 def get_sine_levels():
     """Get list of levels with the first harmonic set to full and the rest to zero."""
@@ -22,7 +22,7 @@ def get_saw_levels():
         n = i + 1  # harmonic numbers start at 1
         a = 1.0 / float(n)
         level = get_level(a)
-        levels.append(math.floor(level))
+        levels.append(level)
     return levels
 
 def get_sqr_levels():
@@ -48,8 +48,7 @@ def get_tri_levels():
                 a = -a
                 negative = not negative
             level = get_level(a)
-        levels.append(math.floor(level))
-
+        levels.append(level)
     return levels
 
 levels_function_table = {
