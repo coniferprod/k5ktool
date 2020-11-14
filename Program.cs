@@ -347,9 +347,25 @@ namespace K5KTool
             }
         }
 
+        // Create an init patch. This is a single patch with basic settings.
         public static int RunInitAndReturnExitCode(InitOptions opts)
         {
             Console.WriteLine("Init");
+
+            SinglePatch patch = new SinglePatch();
+            patch.SingleCommon.Name = "DS Init";
+            patch.SingleCommon.Volume = 115;
+            patch.SingleCommon.SourceCount = 2;
+
+            patch.Sources = new Source[patch.SingleCommon.SourceCount];
+            for (int i = 0; i < patch.SingleCommon.SourceCount; i++)
+            {
+                patch.Sources[i] = new Source();
+            }
+
+
+            Console.WriteLine(patch.ToString());
+
             return 0;
         }
     }
