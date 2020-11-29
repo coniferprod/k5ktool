@@ -2,6 +2,7 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Text;
+using System.Globalization;
 
 using CommandLine;
 using Newtonsoft.Json;
@@ -19,13 +20,14 @@ namespace K5KTool
 
         static int Main(string[] args)
         {
-            var parserResult = Parser.Default.ParseArguments<CreateOptions, ListOptions, DumpOptions, ReportOptions, InitOptions>(args);
+            var parserResult = Parser.Default.ParseArguments<CreateOptions, ListOptions, DumpOptions, ReportOptions, InitOptions, EditOptions>(args);
             parserResult.MapResult(
                 (CreateOptions opts) => RunCreateAndReturnExitCode(opts),
                 (ListOptions opts) => RunListAndReturnExitCode(opts),
                 (DumpOptions opts) => RunDumpAndReturnExitCode(opts),
                 (ReportOptions opts) => RunReportAndReturnExitCode(opts),
                 (InitOptions opts) => RunInitAndReturnExitCode(opts),
+                (EditOptions opts) => RunEditAndReturnExitCode(opts),
                 errs => 1
             );
 
@@ -361,6 +363,103 @@ namespace K5KTool
         public static int RunInitAndReturnExitCode(InitOptions opts)
         {
             Console.WriteLine("Init");
+            return 0;
+        }
+
+        private static List<string> SendHarmonics(string deviceName, byte channel, int sourceNumber, byte[] levels, int groupNumber)
+        {
+            string commandName = "sendmidi";
+            List<string> lines = new List<string>();
+            for (int i = 0; i < levels.Length; i++)
+            {
+                StringBuilder cmd = new StringBuilder();
+                cmd.Append($"{commandName} dev \"{deviceName}\" hex syx");
+
+                List<byte> data = new List<byte>();
+                data.Add(0x40); // Kawai ID
+                data.Add(channel);
+                data.Add((byte)SystemExclusiveFunction.ParameterSend);
+                // TODO: Update the library to use byte as underlying type for the enum
+                data.Add(0x00); // group number
+                data.Add(0x0a); // machine number for K5000
+                data.Add(0x02);
+                data.Add((byte)(0x40 + groupNumber));
+                data.Add((byte)sourceNumber);
+                data.Add((byte)i);
+                data.Add(0);
+                data.Add(0);
+                data.Add(levels[i]);
+
+                foreach (byte b in data)
+                {
+                    cmd.Append(String.Format(" {0:X2}", b));
+                }
+                lines.Add(cmd.ToString());
+            }
+
+            return lines;
+        }
+
+        public static int RunEditAndReturnExitCode(EditOptions options)
+        {
+            byte[] levels;
+
+            if (options.Waveform.Equals("custom"))
+            {
+                if (string.IsNullOrEmpty(options.Params))
+                {
+                    Console.WriteLine("Parameters required for Custom waveform");
+                    return 1;
+                }
+
+                List<string> paramStrings = new List<string>(options.Params.Split(','));
+                /*
+                foreach (string s in paramStrings)
+                {
+                    Console.WriteLine(s);
+                }
+                */
+
+                List<double> paramValues = new List<double>();
+                foreach (string s in paramStrings)
+                {
+                    double value = double.Parse(s, CultureInfo.InvariantCulture);
+                    paramValues.Add(value);
+                }
+                /*
+                foreach (double v in paramValues)
+                {
+                    Console.WriteLine(v);
+                }
+                */
+
+                WaveformParameters parameters = new WaveformParameters {
+                    A = paramValues[0],
+                    B = paramValues[1],
+                    C = paramValues[2],
+                    XP = paramValues[3],
+                    D = paramValues[4],
+                    E = paramValues[5],
+                    YP = paramValues[6]
+                };
+                levels = WaveformEngine.GetCustomHarmonicLevels(parameters, 64, 127);
+            }
+            else
+            {
+                levels = WaveformEngine.GetHarmonicLevels(options.Waveform, 64, 127);
+            }
+
+            List<string> group1Lines = SendHarmonics(options.Device, 0, 1, levels, 1);
+            foreach (string line in group1Lines)
+            {
+                Console.WriteLine(line);
+            }
+            List<string> group2Lines = SendHarmonics(options.Device, 0, 1, levels, 2);
+            foreach (string line in group2Lines)
+            {
+                Console.WriteLine(line);
+            }
+
             return 0;
         }
     }

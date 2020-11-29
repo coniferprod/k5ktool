@@ -3,7 +3,7 @@ import os
 
 from harmonics import get_harmonic_levels
 
-def send_h(device_name, channel, levels, group_num=1, dry_run=False):
+def send_harmonics(device_name, channel, levels, group_num=1, dry_run=False):
     for i, h in enumerate(levels):
         cmd = 'sendmidi dev "{}" hex syx'.format(device_name)
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     dry_run = (sys.argv[5] == 'dry')
 
     print('Sending SOFT harmonics')
-    send_h(device_name, channel, levels, 1, dry_run)
+    send_harmonics(device_name, channel, levels, 1, dry_run)
 
     print('Sending LOUD harmonics')
-    send_h(device_name, channel, levels, 2, dry_run)
+    send_harmonics(device_name, channel, levels, 2, dry_run)

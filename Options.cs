@@ -54,4 +54,17 @@ namespace K5KTool
         [Option('o', "output", Required = true, HelpText = "Output file.")]
         public string OutputFileName { get; set; }
     }
+
+    [Verb("edit", HelpText = "Make changes to the edit buffer")]
+    public class EditOptions
+    {
+        [Option('d', "device", Required = true, HelpText = "MIDI device for `sendmidi` command")]
+        public string Device { get; set; }
+
+        [Option('w', "waveform", Required = true, HelpText = "Waveform for harmonic levels")]
+        public string Waveform { get; set; }
+
+        [Option('p', "params", Required = false, HelpText = "Parameters for custom waveform, comma-separated")]
+        public string Params { get; set; }
+    }
 }
