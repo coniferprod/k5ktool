@@ -24,6 +24,7 @@ def get_saw_levels():
     for i in range(harmonic_count):
         n = i + 1  # harmonic numbers start at 1
         a = 1.0 / float(n)
+        print(n, a)
         level = get_level(a)
         levels.append(level)
     return levels
