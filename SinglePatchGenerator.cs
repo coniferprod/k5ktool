@@ -198,7 +198,7 @@ namespace K5KTool
             if (!string.IsNullOrEmpty(waveformTemplateName))
             {
                 int numHarmonics = 64;
-                byte[] levels = LeiterEngine.GetHarmonicLevels(waveformTemplateName, numHarmonics, 127);  // levels are 0...127
+                byte[] levels = WaveformEngine.GetHarmonicLevels(waveformTemplateName, numHarmonics, 127);  // levels are 0...127
                 source.ADD.SoftHarmonics = levels;
 
                 Console.WriteLine(String.Format("waveform template = {0}", waveformTemplateName));

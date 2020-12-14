@@ -80,6 +80,24 @@ You should see the response from the unit in the output of the `receivemidi` com
 
 This means an ID acknowledge (61h) on channel 1 (00h) from a Kawai K5000S (02h).
 
+## Python scripts
+
+In addition to the C# command-line tool there are some Python scripts that generate harmonic
+levels and send commands to the synth using the `sendmidi` utility.
+
+For example, the `sendharm.py` script sends the harmonics for either a pre-defined waveform name
+or a custom waveform specified as parameters:
+
+    python3 sendharm.py "U-44 ZOOM U-44 MIDI I/O Port" 1 1 sqr
+    python3 sendharm.py "U-44 ZOOM U-44 MIDI I/O Port" 1 1 custom 2.0,2.0,0.0,0.1,0.0,0.0,0.0
+
+If you just want to generate the harmonic levels and inspect them visually, the `harmonics.py`
+script does that for both predefined and custom levels, and shows a bar chart using Matplotlib.
+
+The harmonic level computation is adapted from ["Method for Additive Synthesis of
+Sound"](https://patents.google.com/patent/US6143974A/en) by Philip Y. Dahl (U.S.
+patent 6,143,974; expired in 2019), which is directly related to the Kawai K5000.
+
 ## History
 
 I started this utility in C# and .NET Core, mostly to get back on track
