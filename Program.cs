@@ -3,9 +3,11 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
+using System.Linq;
 
 using CommandLine;
 using Newtonsoft.Json;
+using Schemy;
 
 using KSynthLib.Common;
 using KSynthLib.K5000;
@@ -20,7 +22,7 @@ namespace K5KTool
 
         static int Main(string[] args)
         {
-            var parserResult = Parser.Default.ParseArguments<CreateOptions, ListOptions, DumpOptions, ReportOptions, InitOptions, EditOptions>(args);
+            var parserResult = Parser.Default.ParseArguments<CreateOptions, ListOptions, DumpOptions, ReportOptions, InitOptions, EditOptions, ShellOptions>(args);
             parserResult.MapResult(
                 (CreateOptions opts) => RunCreateAndReturnExitCode(opts),
                 (ListOptions opts) => RunListAndReturnExitCode(opts),
@@ -28,6 +30,7 @@ namespace K5KTool
                 (ReportOptions opts) => RunReportAndReturnExitCode(opts),
                 (InitOptions opts) => RunInitAndReturnExitCode(opts),
                 (EditOptions opts) => RunEditAndReturnExitCode(opts),
+                (ShellOptions opts) => RunShellAndReturnExitCode(opts),
                 errs => 1
             );
 
@@ -478,5 +481,32 @@ namespace K5KTool
 
             return 0;
         }
+
+        delegate object Function(object input);
+
+        public static int RunShellAndReturnExitCode(ShellOptions opts)
+        {
+            Interpreter.CreateSymbolTableDelegate extension = _ => new Dictionary<Symbol, object>()
+            {
+                { Symbol.FromString("chain"), new NativeProcedure(funcs => new Function(input => funcs.Cast<Function>().Select(b => input = b(input)).Last())) },
+                { Symbol.FromString("say-hi"), NativeProcedure.Create<Function>(() => name => $"Hello {name}!") },
+                { Symbol.FromString("truncate-string"), NativeProcedure.Create<int, Function>(len => input => ((string)input).Substring(0, len)) },
+            };
+
+            var interpreter = new Interpreter(new[] { extension }, new ReadOnlyFileSystemAccessor());
+            var headers = new[]
+            {
+                "-----------------------------------------------",
+                "| Schemy - Scheme as a Configuration Language |",
+                "| Press Ctrl-C to exit                        |",
+                "-----------------------------------------------",
+            };
+            interpreter.REPL(Console.In, Console.Out, "k5ktool> ", headers);            
+
+            // TODO: Try placing K5000-specific Scheme code in .init.ss for automatic loading
+
+            return 0;
+        }
+
     }
 }
