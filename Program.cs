@@ -180,9 +180,10 @@ namespace K5KTool
         private static string MakeTextList(byte[] data, string title)
         {
             StringBuilder sb = new StringBuilder();
+
+            /*
             sb.Append("SINGLE patches:\n");
 
-/*
             int offset = 0;
             for (int i = 0; i < SinglePatchCount; i++)
             {
@@ -197,7 +198,7 @@ namespace K5KTool
                 offset += SinglePatch.DataSize;
             }
             sb.Append("\n");
-*/
+            */
 
             return sb.ToString();
         }
@@ -341,17 +342,47 @@ namespace K5KTool
                     break;
             }
 
+            if (function == SystemExclusiveFunction.AllBlockDump)
+            {
+                byte[] patchMapData = new byte[PatchMap.Size];
+                Array.Copy(message, SystemExclusiveHeader.DataSize, patchMapData, 0, PatchMap.Size);
+
+                PatchMap patchMap = new PatchMap(patchMapData);
+                
+                Console.WriteLine("Patches included:");
+                for (int i = 0; i < PatchMap.PatchCount; i++)
+                {
+                    if (patchMap[i])
+                    {
+                        Console.Write(i + 1);
+                        Console.Write(" ");
+                    }
+                }
+                Console.WriteLine();
+
+                int dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
+                byte[] data = new byte[dataLength];
+                Array.Copy(message, SystemExclusiveHeader.DataSize + PatchMap.Size, data, 0, dataLength);
+                Console.WriteLine(Util.HexDump(data));
+
+                int offset = 0;
+                byte checksum = data[offset];
+                Console.WriteLine($"checksum = {checksum:X2}");
+                offset += 1;
+            }
+
             // Single additive patch for bank A or D:
             if (header.Substatus1 == 0x00 && (header.Substatus2 == 0x00 || header.Substatus2 == 0x02))
             {
-                int dataLength = message.Length - SystemExclusiveHeader.DataSize;
+                int dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
                 byte[] data = new byte[dataLength];
-                Array.Copy(message, SystemExclusiveHeader.DataSize, data, 0, dataLength);
-                Console.WriteLine(Util.HexDump(data));
+                Array.Copy(message, SystemExclusiveHeader.DataSize + PatchMap.Size, data, 0, dataLength);
+                //Console.WriteLine(Util.HexDump(data));
 
                 // Chop the data into individual buffers based on the declared sizes
                 int offset = 0;
                 byte checksum = data[offset];
+                Console.WriteLine($"checksum = {checksum:X2}");
                 offset += 1;
                 byte[] commonData = new byte[SingleCommonSettings.DataSize];
                 Array.Copy(data, offset, commonData, 0, SingleCommonSettings.DataSize);
@@ -398,7 +429,6 @@ namespace K5KTool
                 data.Add(0x40); // Kawai ID
                 data.Add(channel);
                 data.Add((byte)SystemExclusiveFunction.ParameterSend);
-                // TODO: Update the library to use byte as underlying type for the enum
                 data.Add(0x00); // group number
                 data.Add(0x0a); // machine number for K5000
                 data.Add(0x02);
@@ -488,9 +518,7 @@ namespace K5KTool
         {
             Interpreter.CreateSymbolTableDelegate extension = _ => new Dictionary<Symbol, object>()
             {
-                { Symbol.FromString("chain"), new NativeProcedure(funcs => new Function(input => funcs.Cast<Function>().Select(b => input = b(input)).Last())) },
                 { Symbol.FromString("say-hi"), NativeProcedure.Create<Function>(() => name => $"Hello {name}!") },
-                { Symbol.FromString("truncate-string"), NativeProcedure.Create<int, Function>(len => input => ((string)input).Substring(0, len)) },
             };
 
             var interpreter = new Interpreter(new[] { extension }, new ReadOnlyFileSystemAccessor());
