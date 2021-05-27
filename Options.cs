@@ -67,11 +67,4 @@ namespace K5KTool
         [Option('p', "params", Required = false, HelpText = "Parameters for custom waveform, comma-separated")]
         public string Params { get; set; }
     }
-
-    [Verb("shell", HelpText = "Start an interactive shell for the Schemy language")]
-    public class ShellOptions
-    {
-        [Option('l', "load", Required = false, HelpText = "Load an initial Scheme source file")]
-        public string Load { get; set; }
-    }
 }
