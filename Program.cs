@@ -74,7 +74,7 @@ namespace K5KTool
                     break;
 
                 default:
-                    Console.WriteLine(String.Format("Unknown bank: '{0}'", opts.BankName));
+                    Console.WriteLine(string.Format("Unknown bank: '{0}'", opts.BankName));
                     return -1;
             }
 
@@ -111,8 +111,8 @@ namespace K5KTool
 
                 SinglePatch single = generator.Generate();
                 byte[] singleData = single.ToData();
-                Console.WriteLine(String.Format("Generated single data size: {0} bytes", singleData.Length));
-                Console.WriteLine(single.ToString());
+                Console.Error.WriteLine(string.Format("Generated single data size: {0} bytes", singleData.Length));
+                Console.Error.WriteLine(single.ToString());
                 allData.AddRange(singleData);
 
                 allData.Add(SystemExclusiveHeader.Terminator);
@@ -142,14 +142,94 @@ namespace K5KTool
 
             if (opts.Type.Equals("sysex"))
             {
-                SystemExclusiveHeader header = new SystemExclusiveHeader(allData);
+                int offset = 0;
+                byte[] headerData = new byte[27];  // max header length?
+                Array.Copy(allData, offset, headerData, 0, 27);
+                SystemExclusiveHeader header = new SystemExclusiveHeader(headerData);
+                Console.Error.WriteLine($"SysEx: manufacturer = {header.ManufacturerID:X2}h, channel = {header.Channel + 1}");
                 // TODO: Check the SysEx file header for validity
 
-                // Extract the patch bytes (discarding the SysEx header and terminator)
-                dataLength = allData.Length - SystemExclusiveHeader.DataSize - 1;
+                DumpCommand command = new DumpCommand(headerData);
+                Console.Error.WriteLine($"cardinality = {command.Card}, bank = {command.Bank}");
 
-                data = new byte[dataLength];
-                Array.Copy(allData, SystemExclusiveHeader.DataSize, data, 0, dataLength);
+                offset += 8;
+
+                PatchMap patchMap = new PatchMap();
+                if (command.Card == DumpCommand.Cardinality.Block)
+                {
+                    // For a block data dump, need to parse the tone map
+                    byte[] patchMapData = new byte[PatchMap.Size];
+                    Array.Copy(allData, offset, patchMapData, 0, PatchMap.Size);
+                    Console.Error.WriteLine($"Copied {PatchMap.Size} bytes from offset {offset} to patchMapData");
+
+                    patchMap = new PatchMap(patchMapData);
+                    Console.WriteLine("Patches included:");
+                    int patchCount = 0;
+                    for (int i = 0; i < PatchMap.PatchCount; i++)
+                    {
+                        if (patchMap[i])
+                        {
+                            patchCount += 1;
+                            Console.Write(i + 1);
+                            Console.Write(" ");
+                        }
+                    }
+                    Console.WriteLine($"\nTotal = {patchCount} patches");
+
+                    offset += PatchMap.Size;
+
+                    Console.Error.WriteLine($"offset = {offset}");
+                    data = new byte[allData.Length];
+                    Array.Copy(allData, offset, data, 0, allData.Length - offset);
+
+                    int totalPatchSize = 0;
+                    int minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
+                    Console.Error.WriteLine($"minimum patch size = {minimumPatchSize}");
+                    for (int i = 0; i < patchCount; i++)
+                    {
+                        byte[] singleData = new byte[minimumPatchSize];
+                        // first just use all of the patch data
+                        Array.Copy(allData, offset, singleData, 0, minimumPatchSize);
+                        Console.Error.WriteLine($"Copied {minimumPatchSize} bytes from offset {offset} to singleData");
+                        Console.Error.Write(Util.HexDump(singleData));
+
+                        SinglePatch patch = new SinglePatch(singleData);
+
+                        // Find out how many PCM and ADD sources
+                        int pcmCount = 0;
+                        int addCount = 0;
+                        foreach (Source source in patch.Sources)
+                        {
+                            if (source.IsAdditive)
+                            {
+                                addCount += 1;
+                            }
+                            else
+                            {
+                                pcmCount += 1;
+                            }
+                        }
+
+                        // Figure out the total size of the single patch based on the counts
+                        int patchSize = SingleCommonSettings.DataSize + pcmCount * Source.DataSize + addCount * Source.DataSize + addCount * AdditiveKit.DataSize;
+                        Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
+                        Array.Copy(data, offset, singleData, 0, patchSize);
+                        //Console.Error.Write(Util.HexDump(singleData));
+
+                        offset += patchSize;
+                        totalPatchSize = patchSize;
+                    }
+
+                    Console.WriteLine($"Total patch size = {totalPatchSize} bytes");
+                }
+                else
+                {
+                    offset += 3 + 5 + 1;
+
+                    Console.WriteLine("Can't handle single patch files yet, sorry!");
+                    return -1;
+                }
+
             }
             else if (opts.Type.Equals("bank"))
             {
@@ -177,7 +257,7 @@ namespace K5KTool
             }
             else
             {
-                Console.WriteLine(String.Format($"Unknown output format: '{outputFormat}'"));
+                Console.WriteLine($"Unknown output format: '{outputFormat}'");
                 return -1;
             }
         }
@@ -217,7 +297,7 @@ namespace K5KTool
 
         public static int RunDumpAndReturnExitCode(DumpOptions opts)
         {
-            Console.WriteLine("Dump not implemented yet");
+            Console.Error.WriteLine("Dump not implemented yet");
 
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
@@ -267,14 +347,14 @@ namespace K5KTool
             };
 
             SystemExclusiveFunction function = (SystemExclusiveFunction)header.Function;
-            string functionName = "";
+            string functionName;
             if (functionNames.TryGetValue(function, out functionName))
             {
-                Console.WriteLine("Function = {0}", functionName);
+                Console.Error.WriteLine("Function = {0}", functionName);
             }
             else
             {
-                Console.WriteLine("Unknown function: {0}", function);
+                Console.Error.WriteLine("Unknown function: {0}", function);
             }
 
             switch (header.Substatus1)
@@ -296,7 +376,7 @@ namespace K5KTool
                     break;
 
                 default:
-                    Console.WriteLine(String.Format("Unknown substatus1: {0:X2}", header.Substatus1));
+                    Console.Error.WriteLine(string.Format("Unknown substatus1: {0:X2}", header.Substatus1));
                     break;
             }
 
@@ -444,7 +524,7 @@ namespace K5KTool
 
                 foreach (byte b in data)
                 {
-                    cmd.Append(String.Format(" {0:X2}", b));
+                    cmd.Append(string.Format(" {0:X2}", b));
                 }
                 lines.Add(cmd.ToString());
             }
@@ -514,6 +594,5 @@ namespace K5KTool
 
             return 0;
         }
-
     }
 }
