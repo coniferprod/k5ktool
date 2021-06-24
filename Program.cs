@@ -3,11 +3,9 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
-using System.Linq;
 
 using CommandLine;
 using Newtonsoft.Json;
-using Schemy;
 
 using KSynthLib.Common;
 using KSynthLib.K5000;
@@ -22,7 +20,15 @@ namespace K5KTool
 
         static int Main(string[] args)
         {
-            var parserResult = Parser.Default.ParseArguments<CreateOptions, ListOptions, DumpOptions, ReportOptions, InitOptions, EditOptions, ShellOptions>(args);
+            var parserResult = Parser.Default.ParseArguments<
+                CreateOptions,
+                ListOptions,
+                DumpOptions,
+                ReportOptions,
+                InitOptions,
+                EditOptions
+            >(args);
+
             parserResult.MapResult(
                 (CreateOptions opts) => RunCreateAndReturnExitCode(opts),
                 (ListOptions opts) => RunListAndReturnExitCode(opts),
@@ -30,7 +36,6 @@ namespace K5KTool
                 (ReportOptions opts) => RunReportAndReturnExitCode(opts),
                 (InitOptions opts) => RunInitAndReturnExitCode(opts),
                 (EditOptions opts) => RunEditAndReturnExitCode(opts),
-                (ShellOptions opts) => RunShellAndReturnExitCode(opts),
                 errs => 1
             );
 
@@ -222,14 +227,12 @@ namespace K5KTool
 
         public static int RunReportAndReturnExitCode(ReportOptions opts)
         {
-            Console.WriteLine("Report");
-
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
-            Console.WriteLine($"SysEx file: '{fileName}' ({fileData.Length} bytes)");
+            Console.WriteLine($"Report on System Exclusive file '{fileName}' ({fileData.Length} bytes)");
 
             List<byte[]> messages = Util.SplitBytesByDelimiter(fileData, 0xf7);
-            Console.WriteLine($"Got {messages.Count} messages");
+            Console.WriteLine($"Contains {messages.Count} messages");
 
             foreach (byte[] message in messages)
             {
@@ -241,11 +244,11 @@ namespace K5KTool
 
         private static void ProcessMessage(byte[] message)
         {
-            Console.WriteLine($"message length = {message.Length} bytes");
+            Console.WriteLine($"Message length = {message.Length} bytes");
 
             SystemExclusiveHeader header = new SystemExclusiveHeader(message);
+            //Console.WriteLine("{0}", header);
 
-            Console.WriteLine("{0}", header);
             Dictionary<SystemExclusiveFunction, string> functionNames = new Dictionary<SystemExclusiveFunction, string>()
             {
                 { SystemExclusiveFunction.OneBlockDumpRequest, "One Block Dump Request" },
@@ -348,7 +351,7 @@ namespace K5KTool
                 Array.Copy(message, SystemExclusiveHeader.DataSize, patchMapData, 0, PatchMap.Size);
 
                 PatchMap patchMap = new PatchMap(patchMapData);
-                
+
                 Console.WriteLine("Patches included:");
                 for (int i = 0; i < PatchMap.PatchCount; i++)
                 {
@@ -363,7 +366,7 @@ namespace K5KTool
                 int dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
                 byte[] data = new byte[dataLength];
                 Array.Copy(message, SystemExclusiveHeader.DataSize + PatchMap.Size, data, 0, dataLength);
-                Console.WriteLine(Util.HexDump(data));
+                //Console.WriteLine(Util.HexDump(data));
 
                 int offset = 0;
                 byte checksum = data[offset];
@@ -386,7 +389,7 @@ namespace K5KTool
                 offset += 1;
                 byte[] commonData = new byte[SingleCommonSettings.DataSize];
                 Array.Copy(data, offset, commonData, 0, SingleCommonSettings.DataSize);
-                Console.WriteLine(Util.HexDump(commonData));
+                //Console.WriteLine(Util.HexDump(commonData));
                 offset += SingleCommonSettings.DataSize;
 
                 SinglePatch patch = new SinglePatch(data);
@@ -508,30 +511,6 @@ namespace K5KTool
             {
                 Console.WriteLine(line);
             }
-
-            return 0;
-        }
-
-        delegate object Function(object input);
-
-        public static int RunShellAndReturnExitCode(ShellOptions opts)
-        {
-            Interpreter.CreateSymbolTableDelegate extension = _ => new Dictionary<Symbol, object>()
-            {
-                { Symbol.FromString("say-hi"), NativeProcedure.Create<Function>(() => name => $"Hello {name}!") },
-            };
-
-            var interpreter = new Interpreter(new[] { extension }, new ReadOnlyFileSystemAccessor());
-            var headers = new[]
-            {
-                "-----------------------------------------------",
-                "| Schemy - Scheme as a Configuration Language |",
-                "| Press Ctrl-C to exit                        |",
-                "-----------------------------------------------",
-            };
-            interpreter.REPL(Console.In, Console.Out, "k5ktool> ", headers);            
-
-            // TODO: Try placing K5000-specific Scheme code in .init.ss for automatic loading
 
             return 0;
         }
