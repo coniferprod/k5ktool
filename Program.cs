@@ -162,7 +162,7 @@ namespace K5KTool
                     // For a block data dump, need to parse the tone map
                     var patchMapData = new byte[PatchMap.Size];
                     Array.Copy(allData, offset, patchMapData, 0, PatchMap.Size);
-                    Console.Error.WriteLine($"Copied {PatchMap.Size} bytes from offset {offset} to patchMapData");
+                    //Console.Error.WriteLine($"Copied {PatchMap.Size} bytes from offset {offset} to patchMapData");
 
                     patchMap = new PatchMap(patchMapData);
                     Console.WriteLine("Patches included:");
