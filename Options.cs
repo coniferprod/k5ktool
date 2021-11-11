@@ -67,4 +67,13 @@ namespace K5KTool
         [Option('p', "params", Required = false, HelpText = "Parameters for custom waveform, comma-separated")]
         public string Params { get; set; }
     }
+
+    [Verb("tui", HelpText = "Show a text uder interface (TUI)")]
+    public class TuiOptions
+    {
+        /*
+        [Option('d', "dummy", Required = true, HelpText = "Not used")]
+        public string Dummy { get; set; }
+        */
+    }
 }

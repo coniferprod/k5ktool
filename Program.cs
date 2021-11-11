@@ -26,7 +26,8 @@ namespace K5KTool
                 DumpOptions,
                 ReportOptions,
                 InitOptions,
-                EditOptions
+                EditOptions,
+                TuiOptions
             >(args);
 
             parserResult.MapResult(
@@ -36,6 +37,7 @@ namespace K5KTool
                 (ReportOptions opts) => RunReportAndReturnExitCode(opts),
                 (InitOptions opts) => RunInitAndReturnExitCode(opts),
                 (EditOptions opts) => RunEditAndReturnExitCode(opts),
+                (TuiOptions opts) => RunTuiAndReturnExitCode(opts),
                 errs => 1
             );
 
@@ -44,7 +46,7 @@ namespace K5KTool
 
         public static int RunCreateAndReturnExitCode(CreateOptions opts)
         {
-            SystemExclusiveHeader header = new SystemExclusiveHeader();
+            var header = new SystemExclusiveHeader();
             header.ManufacturerID = 0x40;  // Kawai
             header.Channel = 0x00;
             header.Function = (byte)SystemExclusiveFunction.OneBlockDump;
@@ -78,13 +80,13 @@ namespace K5KTool
                     return -1;
             }
 
-            List<byte> allData = new List<byte>();
+            var allData = new List<byte>();
             // SysEx initiator and basic header data
             allData.Add(SystemExclusiveHeader.Initiator);
             allData.AddRange(header.ToData());
 
             // Additional header data as required
-            int patchNumber = opts.PatchNumber - 1;
+            var patchNumber = opts.PatchNumber - 1;
             if (patchNumber < 0 || patchNumber > 127)
             {
                 Console.WriteLine("Patch number must be 1...128");
@@ -142,30 +144,30 @@ namespace K5KTool
 
             if (opts.Type.Equals("sysex"))
             {
-                int offset = 0;
-                byte[] headerData = new byte[27];  // max header length?
+                var offset = 0;
+                var headerData = new byte[27];  // max header length?
                 Array.Copy(allData, offset, headerData, 0, 27);
-                SystemExclusiveHeader header = new SystemExclusiveHeader(headerData);
+                var header = new SystemExclusiveHeader(headerData);
                 Console.Error.WriteLine($"SysEx: manufacturer = {header.ManufacturerID:X2}h, channel = {header.Channel + 1}");
                 // TODO: Check the SysEx file header for validity
 
-                DumpCommand command = new DumpCommand(headerData);
+                var command = new DumpCommand(headerData);
                 Console.Error.WriteLine($"cardinality = {command.Card}, bank = {command.Bank}");
 
                 offset += 8;
 
-                PatchMap patchMap = new PatchMap();
+                var patchMap = new PatchMap();
                 if (command.Card == DumpCommand.Cardinality.Block)
                 {
                     // For a block data dump, need to parse the tone map
-                    byte[] patchMapData = new byte[PatchMap.Size];
+                    var patchMapData = new byte[PatchMap.Size];
                     Array.Copy(allData, offset, patchMapData, 0, PatchMap.Size);
                     Console.Error.WriteLine($"Copied {PatchMap.Size} bytes from offset {offset} to patchMapData");
 
                     patchMap = new PatchMap(patchMapData);
                     Console.WriteLine("Patches included:");
-                    int patchCount = 0;
-                    for (int i = 0; i < PatchMap.PatchCount; i++)
+                    var patchCount = 0;
+                    for (var i = 0; i < PatchMap.PatchCount; i++)
                     {
                         if (patchMap[i])
                         {
@@ -182,23 +184,23 @@ namespace K5KTool
                     data = new byte[allData.Length];
                     Array.Copy(allData, offset, data, 0, allData.Length - offset);
 
-                    int totalPatchSize = 0;
-                    int minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
+                    var totalPatchSize = 0;
+                    var minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
                     Console.Error.WriteLine($"minimum patch size = {minimumPatchSize}");
-                    for (int i = 0; i < patchCount; i++)
+                    for (var i = 0; i < patchCount; i++)
                     {
-                        byte[] singleData = new byte[minimumPatchSize];
+                        var singleData = new byte[minimumPatchSize];
                         // first just use all of the patch data
                         Array.Copy(allData, offset, singleData, 0, minimumPatchSize);
                         Console.Error.WriteLine($"Copied {minimumPatchSize} bytes from offset {offset} to singleData");
                         Console.Error.Write(Util.HexDump(singleData));
 
-                        SinglePatch patch = new SinglePatch(singleData);
+                        var patch = new SinglePatch(singleData);
 
                         // Find out how many PCM and ADD sources
-                        int pcmCount = 0;
-                        int addCount = 0;
-                        foreach (Source source in patch.Sources)
+                        var pcmCount = 0;
+                        var addCount = 0;
+                        foreach (var source in patch.Sources)
                         {
                             if (source.IsAdditive)
                             {
@@ -211,7 +213,7 @@ namespace K5KTool
                         }
 
                         // Figure out the total size of the single patch based on the counts
-                        int patchSize = SingleCommonSettings.DataSize + pcmCount * Source.DataSize + addCount * Source.DataSize + addCount * AdditiveKit.DataSize;
+                        var patchSize = SingleCommonSettings.DataSize + pcmCount * Source.DataSize + addCount * Source.DataSize + addCount * AdditiveKit.DataSize;
                         Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
                         Array.Copy(data, offset, singleData, 0, patchSize);
                         //Console.Error.Write(Util.HexDump(singleData));
@@ -264,7 +266,7 @@ namespace K5KTool
 
         private static string MakeTextList(byte[] data, string title)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             /*
             sb.Append("SINGLE patches:\n");
@@ -290,17 +292,40 @@ namespace K5KTool
 
         private static string MakeHtmlList(byte[] data, string title)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             return sb.ToString();
         }
 
         public static int RunDumpAndReturnExitCode(DumpOptions opts)
         {
-            Console.Error.WriteLine("Dump not implemented yet");
+            //Console.Error.WriteLine("Dump not implemented yet");
 
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
+
+            var dump = new DumpCommand(fileData);
+
+            uint offset = 0;
+            DumpCommand.Cardinality card = dump.Card;
+            string cardString = "";
+            if (card == DumpCommand.Cardinality.One)
+            {
+                cardString = "One";
+                offset = 9;
+            }
+            else if (card == DumpCommand.Cardinality.Block)
+            {
+                cardString = "Block";
+                offset = 26;
+            }
+            Console.WriteLine($"{cardString}, bank = {dump.Bank}, patch number = {dump.PatchNumber}");
+
+            var patchData = new byte[fileData.Length];
+            Array.Copy(fileData, offset, patchData, 0, fileData.Length - offset);
+
+            var patch = new SinglePatch(patchData);
+            Console.WriteLine(patch.ToString());
 
             return 0;
         }
@@ -326,10 +351,10 @@ namespace K5KTool
         {
             Console.WriteLine($"Message length = {message.Length} bytes");
 
-            SystemExclusiveHeader header = new SystemExclusiveHeader(message);
+            var header = new SystemExclusiveHeader(message);
             //Console.WriteLine("{0}", header);
 
-            Dictionary<SystemExclusiveFunction, string> functionNames = new Dictionary<SystemExclusiveFunction, string>()
+            var functionNames = new Dictionary<SystemExclusiveFunction, string>()
             {
                 { SystemExclusiveFunction.OneBlockDumpRequest, "One Block Dump Request" },
                 { SystemExclusiveFunction.AllBlockDumpRequest, "All Block Dump Request" },
@@ -346,7 +371,7 @@ namespace K5KTool
                 { SystemExclusiveFunction.WriteErrorByNoExpandMemory, "Write Error (No Expansion Memory)" }
             };
 
-            SystemExclusiveFunction function = (SystemExclusiveFunction)header.Function;
+            var function = (SystemExclusiveFunction)header.Function;
             string functionName;
             if (functionNames.TryGetValue(function, out functionName))
             {
@@ -427,13 +452,13 @@ namespace K5KTool
 
             if (function == SystemExclusiveFunction.AllBlockDump)
             {
-                byte[] patchMapData = new byte[PatchMap.Size];
+                var patchMapData = new byte[PatchMap.Size];
                 Array.Copy(message, SystemExclusiveHeader.DataSize, patchMapData, 0, PatchMap.Size);
 
-                PatchMap patchMap = new PatchMap(patchMapData);
+                var patchMap = new PatchMap(patchMapData);
 
                 Console.WriteLine("Patches included:");
-                for (int i = 0; i < PatchMap.PatchCount; i++)
+                for (var i = 0; i < PatchMap.PatchCount; i++)
                 {
                     if (patchMap[i])
                     {
@@ -443,12 +468,12 @@ namespace K5KTool
                 }
                 Console.WriteLine();
 
-                int dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
-                byte[] data = new byte[dataLength];
+                var dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
+                var data = new byte[dataLength];
                 Array.Copy(message, SystemExclusiveHeader.DataSize + PatchMap.Size, data, 0, dataLength);
                 //Console.WriteLine(Util.HexDump(data));
 
-                int offset = 0;
+                var offset = 0;
                 byte checksum = data[offset];
                 Console.WriteLine($"checksum = {checksum:X2}");
                 offset += 1;
@@ -457,22 +482,22 @@ namespace K5KTool
             // Single additive patch for bank A or D:
             if (header.Substatus1 == 0x00 && (header.Substatus2 == 0x00 || header.Substatus2 == 0x02))
             {
-                int dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
-                byte[] data = new byte[dataLength];
+                var dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
+                var data = new byte[dataLength];
                 Array.Copy(message, SystemExclusiveHeader.DataSize + PatchMap.Size, data, 0, dataLength);
                 //Console.WriteLine(Util.HexDump(data));
 
                 // Chop the data into individual buffers based on the declared sizes
-                int offset = 0;
+                var offset = 0;
                 byte checksum = data[offset];
                 Console.WriteLine($"checksum = {checksum:X2}");
                 offset += 1;
-                byte[] commonData = new byte[SingleCommonSettings.DataSize];
+                var commonData = new byte[SingleCommonSettings.DataSize];
                 Array.Copy(data, offset, commonData, 0, SingleCommonSettings.DataSize);
                 //Console.WriteLine(Util.HexDump(commonData));
                 offset += SingleCommonSettings.DataSize;
 
-                SinglePatch patch = new SinglePatch(data);
+                var patch = new SinglePatch(data);
                 Console.WriteLine($"Name = {patch.SingleCommon.Name}");
             }
         }
@@ -482,7 +507,7 @@ namespace K5KTool
         {
             Console.WriteLine("Init");
 
-            SinglePatch patch = new SinglePatch();
+            var patch = new SinglePatch();
             patch.SingleCommon.Name = "DS Init";
             patch.SingleCommon.Volume = 115;
             patch.SingleCommon.SourceCount = 2;
@@ -493,7 +518,6 @@ namespace K5KTool
                 patch.Sources[i] = new Source();
             }
 
-
             Console.WriteLine(patch.ToString());
 
             return 0;
@@ -502,10 +526,10 @@ namespace K5KTool
         private static List<string> SendHarmonics(string deviceName, byte channel, int sourceNumber, byte[] levels, int groupNumber)
         {
             string commandName = "sendmidi";
-            List<string> lines = new List<string>();
-            for (int i = 0; i < levels.Length; i++)
+            var lines = new List<string>();
+            for (var i = 0; i < levels.Length; i++)
             {
-                StringBuilder cmd = new StringBuilder();
+                var cmd = new StringBuilder();
                 cmd.Append($"{commandName} dev \"{deviceName}\" hex syx");
 
                 List<byte> data = new List<byte>();
@@ -544,7 +568,7 @@ namespace K5KTool
                     return 1;
                 }
 
-                List<string> paramStrings = new List<string>(options.Params.Split(','));
+                var paramStrings = new List<string>(options.Params.Split(','));
                 /*
                 foreach (string s in paramStrings)
                 {
@@ -552,7 +576,7 @@ namespace K5KTool
                 }
                 */
 
-                List<double> paramValues = new List<double>();
+                var paramValues = new List<double>();
                 foreach (string s in paramStrings)
                 {
                     double value = double.Parse(s, CultureInfo.InvariantCulture);
@@ -565,7 +589,8 @@ namespace K5KTool
                 }
                 */
 
-                WaveformParameters parameters = new WaveformParameters {
+                var parameters = new WaveformParameters
+                {
                     A = paramValues[0],
                     B = paramValues[1],
                     C = paramValues[2],
@@ -582,16 +607,23 @@ namespace K5KTool
             }
 
             List<string> group1Lines = SendHarmonics(options.Device, 0, 1, levels, 1);
-            foreach (string line in group1Lines)
+            foreach (var line in group1Lines)
             {
                 Console.WriteLine(line);
             }
             List<string> group2Lines = SendHarmonics(options.Device, 0, 1, levels, 2);
-            foreach (string line in group2Lines)
+            foreach (var line in group2Lines)
             {
                 Console.WriteLine(line);
             }
 
+            return 0;
+        }
+
+        public static int RunTuiAndReturnExitCode(TuiOptions options)
+        {
+            var app = new App();
+            app.Run();
             return 0;
         }
     }

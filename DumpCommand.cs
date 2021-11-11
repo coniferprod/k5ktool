@@ -23,6 +23,8 @@ namespace K5KTool
 		public Cardinality Card;
 		public BankIdentifier Bank;
 
+		public uint PatchNumber;
+
 		public DumpCommand(byte[] header)
 		{
 			// header[0] must be 0xF0
@@ -66,7 +68,7 @@ namespace K5KTool
 					break;
             }
 
-
+			this.PatchNumber = header[8];
 		}
 	}
 
