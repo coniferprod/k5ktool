@@ -29,9 +29,6 @@ namespace K5KTool
 
         [Option('t', "type", Required = true, HelpText = "Type of input file ('sysex' or 'bank')")]
         public string Type { get; set; }
-
-        [Option('o', "output", Required = true, HelpText = "Output file format ('text' or 'html')")]
-        public string Output { get; set; }
     }
 
     [Verb("dump", HelpText = "Dump contents of bank or patch file.")]

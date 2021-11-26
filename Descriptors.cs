@@ -5,7 +5,7 @@ namespace K5KTool
 {
     public class SourceDescriptor
     {
-        public int WaveNumber { get; set; }
+        public ushort WaveNumber { get; set; }
         public string WaveformTemplateName { get; set; }
         public string HarmonicLevelTemplateName { get; set; }
         public string HarmonicEnvelopeTemplateName { get; set; }

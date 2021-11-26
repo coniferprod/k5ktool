@@ -133,7 +133,7 @@ namespace K5KTool
             source.PanValue = 0;
 
             // DCO settings for additive source
-            source.DCO.WaveNumber = AdditiveKit.WaveNumber;
+            source.DCO.Wave =  new Wave(AdditiveKit.WaveNumber);
             source.DCO.Coarse = 0;
             source.DCO.Fine = 0;
             source.DCO.KSPitch = KeyScalingToPitch.ZeroCent;
@@ -258,7 +258,7 @@ namespace K5KTool
             return source;
         }
 
-        private Source GeneratePCMSource(int waveNumber)
+        private Source GeneratePCMSource(ushort waveNumber)
         {
             Source source = new Source();
 
@@ -276,7 +276,7 @@ namespace K5KTool
             source.PanValue = 0;
 
             // DCO
-            source.DCO.WaveNumber = waveNumber;
+            source.DCO.Wave = new Wave(waveNumber);
             source.DCO.Coarse = 0;
             source.DCO.Fine = 0;
             source.DCO.KSPitch = KeyScalingToPitch.ZeroCent;

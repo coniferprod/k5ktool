@@ -46,9 +46,7 @@ namespace K5KTool
 
         public static int RunCreateAndReturnExitCode(CreateOptions opts)
         {
-            var header = new SystemExclusiveHeader();
-            header.ManufacturerID = 0x40;  // Kawai
-            header.Channel = 0x00;
+            var header = new SystemExclusiveHeader(0x00);
             header.Function = (byte)SystemExclusiveFunction.OneBlockDump;
             header.Group = 0x00;
             header.MachineID = 0x0A;
@@ -133,133 +131,117 @@ namespace K5KTool
         public static int RunListAndReturnExitCode(ListOptions opts)
         {
             string fileName = opts.FileName;
-            byte[] allData = File.ReadAllBytes(fileName);
+            byte[] fileData = File.ReadAllBytes(fileName);
             string namePart = new DirectoryInfo(fileName).Name;
             DateTime timestamp = File.GetLastWriteTime(fileName);
             string timestampString = timestamp.ToString("yyyy-MM-dd hh:mm:ss");
-            Console.WriteLine($"System Exclusive file: '{namePart}' ({timestampString}, {allData.Length} bytes)");
+            //Console.WriteLine($"System Exclusive file: '{namePart}' ({timestampString}, {fileData.Length} bytes)");
 
-            byte[] data;
-            int dataLength;
+            var command = new ListCommand(fileData);
+            Console.Error.WriteLine($"Card = {command.Header.Card}, Bank = {command.Header.Bank}, Kind = {command.Header.Kind}");
+
+            var offset = 0;
 
             if (opts.Type.Equals("sysex"))
             {
-                var offset = 0;
-                var headerData = new byte[27];  // max header length?
-                Array.Copy(allData, offset, headerData, 0, 27);
-                var header = new SystemExclusiveHeader(headerData);
-                Console.Error.WriteLine($"SysEx: manufacturer = {header.ManufacturerID:X2}h, channel = {header.Channel + 1}");
-                // TODO: Check the SysEx file header for validity
-
-                var command = new DumpCommand(headerData);
-                Console.Error.WriteLine($"cardinality = {command.Card}, bank = {command.Bank}");
-
-                offset += 8;
-
-                var patchMap = new PatchMap();
-                if (command.Card == DumpCommand.Cardinality.Block)
+                if (command.Header.Card != Cardinality.Block)
                 {
-                    // For a block data dump, need to parse the tone map
-                    var patchMapData = new byte[PatchMap.Size];
-                    Array.Copy(allData, offset, patchMapData, 0, PatchMap.Size);
-                    //Console.Error.WriteLine($"Copied {PatchMap.Size} bytes from offset {offset} to patchMapData");
-
-                    patchMap = new PatchMap(patchMapData);
-                    Console.WriteLine("Patches included:");
-                    var patchCount = 0;
-                    for (var i = 0; i < PatchMap.PatchCount; i++)
-                    {
-                        if (patchMap[i])
-                        {
-                            patchCount += 1;
-                            Console.Write(i + 1);
-                            Console.Write(" ");
-                        }
-                    }
-                    Console.WriteLine($"\nTotal = {patchCount} patches");
-
-                    offset += PatchMap.Size;
-
-                    Console.Error.WriteLine($"offset = {offset}");
-                    data = new byte[allData.Length];
-                    Array.Copy(allData, offset, data, 0, allData.Length - offset);
-
-                    var totalPatchSize = 0;
-                    var minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
-                    Console.Error.WriteLine($"minimum patch size = {minimumPatchSize}");
-                    for (var i = 0; i < patchCount; i++)
-                    {
-                        var singleData = new byte[minimumPatchSize];
-                        // first just use all of the patch data
-                        Array.Copy(allData, offset, singleData, 0, minimumPatchSize);
-                        Console.Error.WriteLine($"Copied {minimumPatchSize} bytes from offset {offset} to singleData");
-                        Console.Error.Write(Util.HexDump(singleData));
-
-                        var patch = new SinglePatch(singleData);
-
-                        // Find out how many PCM and ADD sources
-                        var pcmCount = 0;
-                        var addCount = 0;
-                        foreach (var source in patch.Sources)
-                        {
-                            if (source.IsAdditive)
-                            {
-                                addCount += 1;
-                            }
-                            else
-                            {
-                                pcmCount += 1;
-                            }
-                        }
-
-                        // Figure out the total size of the single patch based on the counts
-                        var patchSize = SingleCommonSettings.DataSize + pcmCount * Source.DataSize + addCount * Source.DataSize + addCount * AdditiveKit.DataSize;
-                        Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
-                        Array.Copy(data, offset, singleData, 0, patchSize);
-                        //Console.Error.Write(Util.HexDump(singleData));
-
-                        offset += patchSize;
-                        totalPatchSize = patchSize;
-                    }
-
-                    Console.WriteLine($"Total patch size = {totalPatchSize} bytes");
-                }
-                else
-                {
-                    offset += 3 + 5 + 1;
-
-                    Console.WriteLine("Can't handle single patch files yet, sorry!");
-                    return -1;
+                    Console.Error.WriteLine("Can only list blocks of patches");
+                    return 0;
                 }
 
+                if (command.Header.Kind != PatchKind.Single)
+                {
+                    Console.Error.WriteLine("Can only handle blocks of singles");
+                    return 0;
+                }
+
+                // SysEx header at this point should be "F0 40 00 21 00 0A 00 00" followed by the tone map
+                offset = 8;  // skip to the tone map
+
+                // For a block data dump, need to parse the tone map
+                var patchMapData = new byte[PatchMap.Size];
+                Array.Copy(fileData, offset, patchMapData, 0, PatchMap.Size);
+                var patchMap = new PatchMap(patchMapData);
+
+                Console.WriteLine("Patches included:");
+                var patchCount = 0;
+                for (var i = 0; i < PatchMap.PatchCount; i++)
+                {
+                    if (patchMap[i])
+                    {
+                        patchCount += 1;
+                        Console.Write(i + 1);
+                        Console.Write(" ");
+                    }
+                }
+                Console.WriteLine($"\nTotal = {patchCount} patches");
+
+                offset += PatchMap.Size;  // skip past the tone map
+
+                // Console.Error.WriteLine($"offset = {offset}");
+                var patchData = new byte[fileData.Length];
+                Array.Copy(fileData, offset, patchData, 0, fileData.Length - offset);
+
+                var totalPatchSize = 0;
+                var minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
+                Console.Error.WriteLine($"minimum patch size = {minimumPatchSize}");
+
+                var singlePatches = new List<SinglePatch>();
+                for (var i = 0; i < patchCount; i++)
+                {
+                    var singleData = new byte[minimumPatchSize];
+                    // first just use all of the patch data
+                    Array.Copy(fileData, offset, singleData, 0, minimumPatchSize);
+                    //Console.Error.WriteLine($"Copied {minimumPatchSize} bytes from offset {offset} to singleData");
+                    //Console.Error.Write(Util.HexDump(singleData));
+
+                    var patch = new SinglePatch(singleData);
+
+                    // Find out how many PCM and ADD sources
+                    var pcmCount = 0;
+                    var addCount = 0;
+                    foreach (var source in patch.Sources)
+                    {
+                        if (source.IsAdditive)
+                        {
+                            addCount += 1;
+                        }
+                        else
+                        {
+                            pcmCount += 1;
+                        }
+                    }
+
+                    // Figure out the total size of the single patch based on the counts
+                    var patchSize = SingleCommonSettings.DataSize + pcmCount * Source.DataSize + addCount * Source.DataSize + addCount * AdditiveKit.DataSize;
+                    Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
+                    Array.Copy(patchData, offset, singleData, 0, patchSize);
+                    //Console.Error.Write(Util.HexDump(singleData));
+
+                    offset += patchSize;
+                    totalPatchSize = patchSize;
+
+                    singlePatches.Add(patch);
+                }
+
+                Console.WriteLine($"Total patch size = {totalPatchSize} bytes");
+
+                foreach (var singlePatch in singlePatches)
+                {
+                    Console.WriteLine($"{singlePatch.SingleCommon.Name}");
+                }
+
+                return 0;
             }
             else if (opts.Type.Equals("bank"))
             {
-                dataLength = allData.Length;
-                data = allData;
-                Console.WriteLine("Sorry, don't know how to handle bank files yet!");
-                return 1;
+                Console.WriteLine("Sorry, don't know how to handle native K5000 bank files yet!");
+                return 0;
             }
             else
             {
                 Console.WriteLine($"Unknown file type: {opts.Type}");
-                return -1;
-            }
-
-            string outputFormat = opts.Output;
-            if (outputFormat.Equals("text"))
-            {
-                Console.WriteLine(MakeTextList(data, namePart));
-                return 0;
-            }
-            else if (outputFormat.Equals("html"))
-            {
-                Console.WriteLine(MakeHtmlList(data, namePart));
-                return 0;
-            }
-            else
-            {
-                Console.WriteLine($"Unknown output format: '{outputFormat}'");
                 return -1;
             }
         }
@@ -307,19 +289,19 @@ namespace K5KTool
             var dump = new DumpCommand(fileData);
 
             uint offset = 0;
-            DumpCommand.Cardinality card = dump.Card;
+            Cardinality card = dump.Header.Card;
             string cardString = "";
-            if (card == DumpCommand.Cardinality.One)
+            if (card == Cardinality.One)
             {
                 cardString = "One";
                 offset = 9;
             }
-            else if (card == DumpCommand.Cardinality.Block)
+            else if (card == Cardinality.Block)
             {
                 cardString = "Block";
                 offset = 26;
             }
-            Console.WriteLine($"{cardString}, bank = {dump.Bank}, patch number = {dump.PatchNumber}");
+            Console.WriteLine($"{cardString}, bank = {dump.Header.Bank}, patch number = {dump.PatchNumber}");
 
             var patchData = new byte[fileData.Length];
             Array.Copy(fileData, offset, patchData, 0, fileData.Length - offset);
@@ -345,6 +327,16 @@ namespace K5KTool
             }
 
             return 0;
+        }
+
+        private static DumpHeader Identify(byte[] fileData)
+        {
+            Console.WriteLine($"File data length = {fileData.Length} bytes");
+
+            // Assume that we have at least one header's worth of data
+            var header = new SystemExclusiveHeader(fileData);
+
+            return new DumpHeader(Cardinality.Block, BankIdentifier.A, PatchKind.Single);
         }
 
         private static void ProcessMessage(byte[] message)
