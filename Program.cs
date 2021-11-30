@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
+using System.Linq;
 
 using CommandLine;
 using Newtonsoft.Json;
@@ -138,9 +139,7 @@ namespace K5KTool
             //Console.WriteLine($"System Exclusive file: '{namePart}' ({timestampString}, {fileData.Length} bytes)");
 
             var command = new ListCommand(fileData);
-            Console.Error.WriteLine($"Card = {command.Header.Card}, Bank = {command.Header.Bank}, Kind = {command.Header.Kind}");
-
-            var offset = 0;
+            //Console.Error.WriteLine($"Card = {command.Header.Card}, Bank = {command.Header.Bank}, Kind = {command.Header.Kind}");
 
             if (opts.Type.Equals("sysex"))
             {
@@ -156,81 +155,7 @@ namespace K5KTool
                     return 0;
                 }
 
-                // SysEx header at this point should be "F0 40 00 21 00 0A 00 00" followed by the tone map
-                offset = 8;  // skip to the tone map
-
-                // For a block data dump, need to parse the tone map
-                var patchMapData = new byte[PatchMap.Size];
-                Array.Copy(fileData, offset, patchMapData, 0, PatchMap.Size);
-                var patchMap = new PatchMap(patchMapData);
-
-                Console.WriteLine("Patches included:");
-                var patchCount = 0;
-                for (var i = 0; i < PatchMap.PatchCount; i++)
-                {
-                    if (patchMap[i])
-                    {
-                        patchCount += 1;
-                        Console.Write(i + 1);
-                        Console.Write(" ");
-                    }
-                }
-                Console.WriteLine($"\nTotal = {patchCount} patches");
-
-                offset += PatchMap.Size;  // skip past the tone map
-
-                // Console.Error.WriteLine($"offset = {offset}");
-                var patchData = new byte[fileData.Length];
-                Array.Copy(fileData, offset, patchData, 0, fileData.Length - offset);
-
-                var totalPatchSize = 0;
-                var minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
-                Console.Error.WriteLine($"minimum patch size = {minimumPatchSize}");
-
-                var singlePatches = new List<SinglePatch>();
-                for (var i = 0; i < patchCount; i++)
-                {
-                    var singleData = new byte[minimumPatchSize];
-                    // first just use all of the patch data
-                    Array.Copy(fileData, offset, singleData, 0, minimumPatchSize);
-                    //Console.Error.WriteLine($"Copied {minimumPatchSize} bytes from offset {offset} to singleData");
-                    //Console.Error.Write(Util.HexDump(singleData));
-
-                    var patch = new SinglePatch(singleData);
-
-                    // Find out how many PCM and ADD sources
-                    var pcmCount = 0;
-                    var addCount = 0;
-                    foreach (var source in patch.Sources)
-                    {
-                        if (source.IsAdditive)
-                        {
-                            addCount += 1;
-                        }
-                        else
-                        {
-                            pcmCount += 1;
-                        }
-                    }
-
-                    // Figure out the total size of the single patch based on the counts
-                    var patchSize = SingleCommonSettings.DataSize + pcmCount * Source.DataSize + addCount * Source.DataSize + addCount * AdditiveKit.DataSize;
-                    Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
-                    Array.Copy(patchData, offset, singleData, 0, patchSize);
-                    //Console.Error.Write(Util.HexDump(singleData));
-
-                    offset += patchSize;
-                    totalPatchSize = patchSize;
-
-                    singlePatches.Add(patch);
-                }
-
-                Console.WriteLine($"Total patch size = {totalPatchSize} bytes");
-
-                foreach (var singlePatch in singlePatches)
-                {
-                    Console.WriteLine($"{singlePatch.SingleCommon.Name}");
-                }
+                command.ListPatches();
 
                 return 0;
             }
@@ -501,7 +426,7 @@ namespace K5KTool
 
             var patch = new SinglePatch();
             patch.SingleCommon.Name = "DS Init";
-            patch.SingleCommon.Volume = 115;
+            patch.SingleCommon.Volume.Value = 115;
             patch.SingleCommon.SourceCount = 2;
 
             patch.Sources = new Source[patch.SingleCommon.SourceCount];

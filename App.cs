@@ -31,12 +31,12 @@ namespace K5KTool
             {
                 new MenuBarItem("_File", new MenuItem[]
                 {
-                    new MenuItem("_Open", "", () => Open(), null, null, Key.O | Key.CtrlMask),
-                    new MenuItem("_Quit", "", () => Quit(), null, null, Key.Q | Key.CtrlMask)
+                    new MenuItem("_Open", "", () => Open(), null, null, Terminal.Gui.Key.O | Terminal.Gui.Key.CtrlMask),
+                    new MenuItem("_Quit", "", () => Quit(), null, null, Terminal.Gui.Key.Q | Terminal.Gui.Key.CtrlMask)
                 }),
                 new MenuBarItem("_Help", new MenuItem[]
                 {
-                    new MenuItem("_About...", "About this app", () =>  MessageBox.Query("About K5KTool", "K5KTool", "_OK"), null, null, Key.CtrlMask | Key.A),
+                    new MenuItem("_About...", "About this app", () =>  MessageBox.Query("About K5KTool", "K5KTool", "_OK"), null, null, Terminal.Gui.Key.CtrlMask | Terminal.Gui.Key.A),
                 })
             });
 
@@ -46,7 +46,7 @@ namespace K5KTool
             };
             _statusBar.Items = new StatusItem[]
             {
-                new StatusItem(Key.Q | Key.CtrlMask, "~Ctrl-Q~ Quit", () =>
+                new StatusItem(Terminal.Gui.Key.Q | Terminal.Gui.Key.CtrlMask, "~Ctrl-Q~ Quit", () =>
                 {
                     Application.RequestStop();
                 })

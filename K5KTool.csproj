@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Version>0.4.1</Version>
+    <Version>0.4.2</Version>
     <Authors>Jere Käpyaho</Authors>
     <Company>Conifer Productions Oy</Company>
     <Product>K5KTool</Product>
@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.8.0" />
-    <PackageReference Include="KSynthLib" Version="0.12.4" />
+    <PackageReference Include="KSynthLib" Version="0.13.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="Terminal.Gui" Version="1.3.1" />
   </ItemGroup>
