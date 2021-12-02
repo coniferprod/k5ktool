@@ -211,28 +211,21 @@ namespace K5KTool
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
 
-            var dump = new DumpCommand(fileData);
+            var command = new DumpCommand(fileData);
 
-            uint offset = 0;
-            Cardinality card = dump.Header.Card;
-            string cardString = "";
-            if (card == Cardinality.One)
+            if (command.Header.Card != Cardinality.Block)
             {
-                cardString = "One";
-                offset = 9;
+                Console.Error.WriteLine("Can only list blocks of patches");
+                return 0;
             }
-            else if (card == Cardinality.Block)
+
+            if (command.Header.Kind != PatchKind.Single)
             {
-                cardString = "Block";
-                offset = 26;
+                Console.Error.WriteLine("Can only handle blocks of singles");
+                return 0;
             }
-            Console.WriteLine($"{cardString}, bank = {dump.Header.Bank}, patch number = {dump.PatchNumber}");
 
-            var patchData = new byte[fileData.Length];
-            Array.Copy(fileData, offset, patchData, 0, fileData.Length - offset);
-
-            var patch = new SinglePatch(patchData);
-            Console.WriteLine(patch.ToString());
+            command.DumpPatches(opts.Output);
 
             return 0;
         }

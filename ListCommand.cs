@@ -7,6 +7,15 @@ using KSynthLib.Common;
 
 namespace K5KTool
 {
+	public class PatchInfo
+	{
+		public BankIdentifier Bank;
+		public int PatchNumber;
+		public string PatchName;
+		public int PCMSourceCount;
+		public int AdditiveSourceCount;
+	}
+
 	public class ListCommand
 	{
 		public byte Channel;
@@ -19,7 +28,7 @@ namespace K5KTool
 		{
 			this.data = new byte[fileData.Length];
 			Array.Copy(fileData, this.data, fileData.Length);
-			Console.WriteLine($"this.data length = {this.data.Length} bytes");
+			//Console.WriteLine($"this.data length = {this.data.Length} bytes");
 
 			// header[0] must be 0xF0
 			// header[1] must be 0x40 (Kawai ID)
@@ -64,13 +73,15 @@ namespace K5KTool
 
 			var totalPatchSize = 0;  // the total size of all the single patches
 
+			var allPatchInfos = new List<PatchInfo>();
+
 			var singlePatches = new List<SinglePatch>();
-			for (var i = 0; i < patchCount; i++)
+			foreach (var patchNumber in patchNumbers)
 			{
 				var startOffset = offset;  // save the current offset because we need to copy more bytes later
 
 				var sizeToRead = Math.Max(minimumPatchSize, this.data.Length - offset);
-				Console.WriteLine($"About to read {sizeToRead} bytes starting from offset {offset:X4}h");
+				//Console.WriteLine($"About to read {sizeToRead} bytes starting from offset {offset:X4}h");
 				// We don't know yet how many bytes the patch is, but it is at least the minimum size
 				(buffer, offset) = Util.GetNextBytes(this.data, offset, sizeToRead);
 				// the offset has now been updated past the read size, so need to adjust it back later
@@ -99,24 +110,33 @@ namespace K5KTool
 				var patchSize = 1 + SingleCommonSettings.DataSize  // includes the checksum
 					+ patch.Sources.Length * KSynthLib.K5000.Source.DataSize  // all sources have this part
 					+ addCount * AdditiveKit.DataSize;
-				Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
+				//Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
 
 				offset = startOffset;  // back up to the start of the patch data
 				// Read the whole patch now that we know its size
-				Console.WriteLine($"About to read {patchSize} bytes starting from offset {offset:X4}h");
+				//Console.WriteLine($"About to read {patchSize} bytes starting from offset {offset:X4}h");
 				(buffer, offset) = Util.GetNextBytes(this.data, offset, patchSize);
 
 				totalPatchSize += patchSize;
 
 				singlePatches.Add(patch);
+
+				var patchInfo = new PatchInfo
+				{
+					Bank = this.Header.Bank,
+					PatchNumber = patchNumber + 1,
+					PatchName = patch.SingleCommon.Name,
+					PCMSourceCount = pcmCount,
+					AdditiveSourceCount = addCount,
+				};
+				Console.WriteLine($"{patchInfo.Bank}{patchInfo.PatchNumber:D3} | {patchInfo.PatchName,8} | {patchInfo.PCMSourceCount}PCM {patchInfo.AdditiveSourceCount}ADD");
+
+				allPatchInfos.Add(patchInfo);
 			}
 
-			Console.WriteLine($"Total patch size = {totalPatchSize} bytes");
-
-			var patches = patchNumbers.Zip(singlePatches, (k, v) => new { k, v }).ToDictionary(x => x.k, x => x.v);
-			foreach (var key in patches.Keys)
+			foreach (var patchInfo in allPatchInfos)
 			{
-				Console.WriteLine($"{this.Header.Bank}{(key + 1):D3} {patches[key].SingleCommon.Name,8} |");
+				Console.WriteLine($"{patchInfo.Bank}{patchInfo.PatchNumber:D3} | {patchInfo.PatchName,8} | {patchInfo.PCMSourceCount}PCM {patchInfo.AdditiveSourceCount}ADD");
 			}
 
 			return 0;

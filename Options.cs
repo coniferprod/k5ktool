@@ -36,6 +36,9 @@ namespace K5KTool
     {
         [Option('f', "filename", Required = true, HelpText = "Input file to be processed.")]
         public string FileName { get; set; }
+
+        [Option('o', "output", Required = true, HelpText = "Output file format ('text' or 'json')")]
+        public string Output { get; set; }
     }
 
     [Verb("report", HelpText = "Report on the specified bank or patch file.")]
