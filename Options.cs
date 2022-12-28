@@ -11,7 +11,7 @@ namespace K5KTool
         [Option('d', "descriptor", Required = false, HelpText = "Descriptor file in JSON format")]
         public string Descriptor { get; set; }
 
-        [Option('o', "output", Required = true, HelpText = "Output file.")]
+        [Option('o', "output", Required = true, HelpText = "Output file")]
         public string OutputFileName { get; set; }
 
         [Option('b', "bank", Required = true, HelpText = "Bank name (A, D, E, F)")]
@@ -24,7 +24,7 @@ namespace K5KTool
     [Verb("list", HelpText = "List contents of bank.")]
     public class ListOptions
     {
-        [Option('f', "filename", Required = true, HelpText = "Input file to be processed.")]
+        [Option('f', "filename", Required = true, HelpText = "Input file to be processed")]
         public string FileName { get; set; }
 
         [Option('t', "type", Required = true, HelpText = "Type of input file ('sysex' or 'bank')")]
@@ -34,7 +34,7 @@ namespace K5KTool
     [Verb("dump", HelpText = "Dump contents of bank or patch file.")]
     public class DumpOptions
     {
-        [Option('f', "filename", Required = true, HelpText = "Input file to be processed.")]
+        [Option('f', "filename", Required = true, HelpText = "Input file to be processed")]
         public string FileName { get; set; }
 
         [Option('o', "output", Required = true, HelpText = "Output file format ('text' or 'json')")]
@@ -44,22 +44,22 @@ namespace K5KTool
     [Verb("report", HelpText = "Report on the specified bank or patch file.")]
     public class ReportOptions
     {
-        [Option('f', "filename", Required = true, HelpText = "Input file to be processed.")]
+        [Option('f', "filename", Required = true, HelpText = "Input file to be processed")]
         public string FileName { get; set; }
     }
 
     [Verb("init", HelpText = "Initialize a new bank.")]
     public class InitOptions
     {
-        [Option('o', "output", Required = true, HelpText = "Output file.")]
+        [Option('o', "output", Required = true, HelpText = "Output file")]
         public string OutputFileName { get; set; }
     }
 
-    [Verb("edit", HelpText = "Make changes to the edit buffer")]
+    [Verb("edit", HelpText = "Make changes to the edit buffer.")]
     public class EditOptions
     {
         [Option('d', "device", Required = true, HelpText = "MIDI device for `sendmidi` command")]
-        public string Device { get; set; }
+        public string Device { get; set; }
 
         [Option('w', "waveform", Required = true, HelpText = "Waveform for harmonic levels")]
         public string Waveform { get; set; }
@@ -68,12 +68,28 @@ namespace K5KTool
         public string Params { get; set; }
     }
 
-    [Verb("tui", HelpText = "Show a text uder interface (TUI)")]
-    public class TuiOptions
+    [Verb("convert", HelpText = "Convert between native file formats.")]
+    public class ConvertOptions
     {
-        /*
-        [Option('d', "dummy", Required = true, HelpText = "Not used")]
-        public string Dummy { get; set; }
-        */
+        [Option('f', "filename", Required = true, HelpText = "Input file to be processed")]
+        public string FileName { get; set; }
+
+        [Option('i', "input", Required = true, HelpText = "Input file format (kaa, ka1)")]
+        public string Input { get; set; }
+
+        [Option('o', "output", Required = true, HelpText = "Output file format (ka1, syx)")]
+        public string Output { get; set; }
+
+        [Option('d', "directory", Required = true, HelpText = "Destination directory for conversion results")]
+        public string DirectoryName { get; set; }
+
+        [Option('b', "bank", Required = true, HelpText = "Bank name (A, B, D, E, F)")]
+        public char BankName { get; set; }
+
+        [Option('n', "number", Required = false, HelpText = "Patch number (1...128) for individual patches")]
+        public int PatchNumber { get; set; }
+
+        [Option('c', "channel", Required = false, HelpText = "MIDI channel (1...16)")]
+        public int Channel { get; set; }
     }
 }

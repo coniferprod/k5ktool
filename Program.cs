@@ -3,13 +3,13 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
-using System.Linq;
 
 using CommandLine;
 using Newtonsoft.Json;
 
 using KSynthLib.Common;
 using KSynthLib.K5000;
+
 
 namespace K5KTool
 {
@@ -28,7 +28,7 @@ namespace K5KTool
                 ReportOptions,
                 InitOptions,
                 EditOptions,
-                TuiOptions
+                ConvertOptions
             >(args);
 
             parserResult.MapResult(
@@ -38,7 +38,7 @@ namespace K5KTool
                 (ReportOptions opts) => RunReportAndReturnExitCode(opts),
                 (InitOptions opts) => RunInitAndReturnExitCode(opts),
                 (EditOptions opts) => RunEditAndReturnExitCode(opts),
-                (TuiOptions opts) => RunTuiAndReturnExitCode(opts),
+                (ConvertOptions opts) => RunConvertAndReturnExitCode(opts),
                 errs => 1
             );
 
@@ -47,8 +47,8 @@ namespace K5KTool
 
         public static int RunCreateAndReturnExitCode(CreateOptions opts)
         {
-            var header = new SystemExclusiveHeader(0x00);
-            header.Function = (byte)SystemExclusiveFunction.OneBlockDump;
+            var header = new SystemExclusiveHeader();
+            header.Function = SystemExclusiveFunction.OneBlockDump;
             header.Group = 0x00;
             header.MachineID = 0x0A;
             header.Substatus1 = 0x00;  // single
@@ -81,7 +81,7 @@ namespace K5KTool
 
             var allData = new List<byte>();
             // SysEx initiator and basic header data
-            allData.Add(SystemExclusiveHeader.Initiator);
+            allData.Add(SystemExclusiveConstants.Initiator);
             allData.AddRange(header.ToData());
 
             // Additional header data as required
@@ -111,12 +111,12 @@ namespace K5KTool
                 }
 
                 SinglePatch single = generator.Generate();
-                byte[] singleData = single.ToData();
-                Console.Error.WriteLine(string.Format("Generated single data size: {0} bytes", singleData.Length));
+                List<byte> singleData = single.GetSystemExclusiveData();
+                Console.Error.WriteLine(string.Format("Generated single data size: {0} bytes", singleData.Count));
                 Console.Error.WriteLine(single.ToString());
                 allData.AddRange(singleData);
 
-                allData.Add(SystemExclusiveHeader.Terminator);
+                allData.Add(SystemExclusiveConstants.Terminator);
 
                 File.WriteAllBytes(opts.OutputFileName, allData.ToArray());
             }
@@ -264,33 +264,8 @@ namespace K5KTool
             var header = new SystemExclusiveHeader(message);
             //Console.WriteLine("{0}", header);
 
-            var functionNames = new Dictionary<SystemExclusiveFunction, string>()
-            {
-                { SystemExclusiveFunction.OneBlockDumpRequest, "One Block Dump Request" },
-                { SystemExclusiveFunction.AllBlockDumpRequest, "All Block Dump Request" },
-                { SystemExclusiveFunction.ParameterSend, "Parameter Send" },
-                { SystemExclusiveFunction.TrackControl, "Track Control" },
-                { SystemExclusiveFunction.OneBlockDump, "One Block Dump" },
-                { SystemExclusiveFunction.AllBlockDump, "All Block Dump" },
-                { SystemExclusiveFunction.ModeChange, "Mode Change" },
-                { SystemExclusiveFunction.Remote, "Remote" },
-                { SystemExclusiveFunction.WriteComplete, "Write Complete" },
-                { SystemExclusiveFunction.WriteError, "Write Error" },
-                { SystemExclusiveFunction.WriteErrorByProtect, "Write Error (Protect)" },
-                { SystemExclusiveFunction.WriteErrorByMemoryFull, "Write Error (Memory Full)" },
-                { SystemExclusiveFunction.WriteErrorByNoExpandMemory, "Write Error (No Expansion Memory)" }
-            };
-
             var function = (SystemExclusiveFunction)header.Function;
-            string functionName;
-            if (functionNames.TryGetValue(function, out functionName))
-            {
-                Console.Error.WriteLine("Function = {0}", functionName);
-            }
-            else
-            {
-                Console.Error.WriteLine("Unknown function: {0}", function);
-            }
+            string functionName = SystemExclusiveFunctionExtensions.Name(function);
 
             switch (header.Substatus1)
             {
@@ -342,35 +317,25 @@ namespace K5KTool
                     break;
             }
 
-            switch (function)
+            Console.WriteLine(functionName);
+
+            if (function == SystemExclusiveFunction.OneBlockDump)
             {
-                case SystemExclusiveFunction.OneBlockDump:
-                    Console.WriteLine("One Block Dump");
-
-                    int toneNumber = message[8] + 1;
-                    Console.WriteLine($"Tone No = {toneNumber} ({message[8]})");
-                    break;
-
-                case SystemExclusiveFunction.AllBlockDump:
-                    Console.WriteLine("All Block Dump");
-                    break;
-
-                default:
-                    Console.WriteLine($"Unknown function: {function}");
-                    break;
+                int toneNumber = message[8] + 1;
+                Console.WriteLine($"Tone No = {toneNumber} ({message[8]})");
             }
 
             if (function == SystemExclusiveFunction.AllBlockDump)
             {
-                var patchMapData = new byte[PatchMap.Size];
-                Array.Copy(message, SystemExclusiveHeader.DataSize, patchMapData, 0, PatchMap.Size);
+                var ToneMapData = new byte[ToneMap.Size];
+                Array.Copy(message, SystemExclusiveHeader.DataSize, ToneMapData, 0, ToneMap.Size);
 
-                var patchMap = new PatchMap(patchMapData);
+                var toneMap = new ToneMap(ToneMapData);
 
                 Console.WriteLine("Patches included:");
-                for (var i = 0; i < PatchMap.PatchCount; i++)
+                for (var i = 0; i < ToneMap.ToneCount; i++)
                 {
-                    if (patchMap[i])
+                    if (toneMap[i])
                     {
                         Console.Write(i + 1);
                         Console.Write(" ");
@@ -378,9 +343,9 @@ namespace K5KTool
                 }
                 Console.WriteLine();
 
-                var dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
+                var dataLength = message.Length - SystemExclusiveHeader.DataSize - ToneMap.Size;
                 var data = new byte[dataLength];
-                Array.Copy(message, SystemExclusiveHeader.DataSize + PatchMap.Size, data, 0, dataLength);
+                Array.Copy(message, SystemExclusiveHeader.DataSize + ToneMap.Size, data, 0, dataLength);
                 //Console.WriteLine(Util.HexDump(data));
 
                 var offset = 0;
@@ -392,9 +357,9 @@ namespace K5KTool
             // Single additive patch for bank A or D:
             if (header.Substatus1 == 0x00 && (header.Substatus2 == 0x00 || header.Substatus2 == 0x02))
             {
-                var dataLength = message.Length - SystemExclusiveHeader.DataSize - PatchMap.Size;
+                var dataLength = message.Length - SystemExclusiveHeader.DataSize - ToneMap.Size;
                 var data = new byte[dataLength];
-                Array.Copy(message, SystemExclusiveHeader.DataSize + PatchMap.Size, data, 0, dataLength);
+                Array.Copy(message, SystemExclusiveHeader.DataSize + ToneMap.Size, data, 0, dataLength);
                 //Console.WriteLine(Util.HexDump(data));
 
                 // Chop the data into individual buffers based on the declared sizes
@@ -418,7 +383,7 @@ namespace K5KTool
             Console.WriteLine("Init");
 
             var patch = new SinglePatch();
-            patch.SingleCommon.Name = "DS Init";
+            patch.SingleCommon.Name = new PatchName("DS Init");
             patch.SingleCommon.Volume.Value = 115;
             patch.SingleCommon.SourceCount = 2;
 
@@ -530,11 +495,10 @@ namespace K5KTool
             return 0;
         }
 
-        public static int RunTuiAndReturnExitCode(TuiOptions options)
+        public static int RunConvertAndReturnExitCode(ConvertOptions opts)
         {
-            var app = new App();
-            app.Run();
-            return 0;
+            var cmd = new ConvertCommand(opts);
+            return cmd.Convert();
         }
     }
 }

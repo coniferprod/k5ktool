@@ -82,7 +82,7 @@ namespace K5KTool
         {
             SinglePatch single = new SinglePatch();
 
-            single.SingleCommon.Name = Descriptor.Name;
+            single.SingleCommon.Name = new PatchName(Descriptor.Name);
             single.SingleCommon.Volume.Value = 115;
             single.SingleCommon.SourceCount = Descriptor.Sources.Count;
             single.SingleCommon.IsPortamentoEnabled = false;

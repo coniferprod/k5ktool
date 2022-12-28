@@ -45,18 +45,18 @@ namespace K5KTool
 
 			// For a block data dump, need to parse the tone map
 			byte[] buffer;
-			(buffer, offset) = Util.GetNextBytes(this.data, offset, PatchMap.Size);
+			(buffer, offset) = Util.GetNextBytes(this.data, offset, ToneMap.Size);
 			// now the offset has been updated to past the tone map
 			//Console.Error.WriteLine($"offset = {offset}");
-			var patchMap = new PatchMap(buffer);
+			var toneMap = new ToneMap(buffer);
 
 			List<int> patchNumbers = new List<int>();
 
 			//Console.WriteLine("Patches included:");
 			var patchCount = 0;
-			for (var i = 0; i < PatchMap.PatchCount; i++)
+			for (var i = 0; i < ToneMap.ToneCount; i++)
 			{
-				if (patchMap[i])
+				if (toneMap[i])
 				{
 					patchCount += 1;
 					//Console.Write(i + 1);
@@ -125,7 +125,7 @@ namespace K5KTool
 				{
 					Bank = this.Header.Bank,
 					PatchNumber = patchNumber + 1,
-					PatchName = patch.SingleCommon.Name,
+					PatchName = patch.SingleCommon.Name.Value,
 					PCMSourceCount = pcmCount,
 					AdditiveSourceCount = addCount,
 				};

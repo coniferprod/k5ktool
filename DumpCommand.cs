@@ -34,15 +34,15 @@ namespace K5KTool
 			var offset = 8;   // skip to the tone map
 
 			byte[] buffer;
-			(buffer, offset) = Util.GetNextBytes(this.data, offset, PatchMap.Size);
-			var patchMap = new PatchMap(buffer);
+			(buffer, offset) = Util.GetNextBytes(this.data, offset, ToneMap.Size);
+			var toneMap = new ToneMap(buffer);
 
 			List<int> patchNumbers = new List<int>();
 
 			var patchCount = 0;
-			for (var i = 0; i < PatchMap.PatchCount; i++)
+			for (var i = 0; i < ToneMap.ToneCount; i++)
 			{
-				if (patchMap[i])
+				if (toneMap[i])
 				{
 					patchCount += 1;
 					//Console.Write(i + 1);
