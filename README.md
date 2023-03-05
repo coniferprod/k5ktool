@@ -4,9 +4,7 @@ Patch management utilities for the
 [Kawai K5000](https://en.wikipedia.org/wiki/Kawai_K5000)
 Advanced Additive Synthesizer (1996).
 
-_(work in progress)_
-
-Requires .NET Core 3.1 or later.
+Uses C# 10.0. Requires .NET 6 or later.
 
 ## Command-line arguments with dotnet
 
@@ -38,6 +36,9 @@ contain pointers to different parts of the data files. Since we can
 just as well transfer patches back and forth using MIDI System Exclusive
 messages, either individually or as bulk dumps, we can ignore the native
 KAA and KA1 formats.
+
+If you need to convert from native formats to System Exclusive,
+use [k5ktools](https://github.com/coniferprod/k5ktools).
 
 ## Working with MIDI System Exclusive messages
 
@@ -144,5 +145,5 @@ C# for the fifth and final interation. I think it may have had something
 to do with the desire to run this utility in Windows, and hopefully develop
 a GUI for a K5000 patch editor for Windows 10 as a UWP application.
 
-The actual patch management utilities have now been moved to a separate
-repository, containing a .NET Standard library packaged with NuGet.
+The actual patch data model has now been moved to a separate
+repository, containing a .NET library packaged with NuGet.

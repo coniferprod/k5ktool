@@ -18,31 +18,60 @@ namespace K5KTool
 
 	public class ListCommand
 	{
-		public byte Channel;
 		public DumpHeader Header;
-        public uint PatchNumber;
 
 		private byte[] data;
 
-        public ListCommand(byte[] fileData)
+        public ListCommand(byte[] payload)
 		{
-			this.data = new byte[fileData.Length];
-			Array.Copy(fileData, this.data, fileData.Length);
+			// The payload must not include the SysEx initiator
+			// and manufacturer identifier.
+
+			this.data = new byte[payload.Length];
+			Array.Copy(payload, this.data, payload.Length);
 			//Console.WriteLine($"this.data length = {this.data.Length} bytes");
 
-			// header[0] must be 0xF0
-			// header[1] must be 0x40 (Kawai ID)
-			this.Channel = data[2];
 			this.Header = new DumpHeader(data);
-			this.PatchNumber = data[8];  // only meaningful for one single, one drum inst, and one combi
         }
 
 		public int ListPatches()
 		{
-			// SysEx header at this point should be "F0 40 00 21 00 0A 00 00" followed by the tone map
-			var offset = 8;   // skip to the tone map
-			//Console.Error.WriteLine($"offset = {offset}");
+			var offset = 0;
 
+			if (this.Header.Cardinality == Cardinality.One)
+			{
+				byte patchNumber = data[6];
+
+				List<byte> toneData = new List<byte>(this.data);
+				const int maxSinglePatchSize = 5434;  // biggest single patch has six ADD sources
+				List<byte> patchData = toneData.Skip(7).Take(maxSinglePatchSize).ToList();  // if the count is bigger than the sequence, returns all
+
+				SinglePatch singlePatch = new SinglePatch(patchData.ToArray());
+				var patchName = singlePatch.SingleCommon.Name.Value;
+
+				// Find out how many PCM and ADD sources
+				var pcmCount = 0;
+				var addCount = 0;
+				foreach (var source in singlePatch.Sources)
+				{
+					if (source.IsAdditive)
+					{
+						addCount += 1;
+					}
+					else
+					{
+						pcmCount += 1;
+					}
+				}
+
+				Console.WriteLine($"{this.Header.Bank}{patchNumber:D3} | {patchName,8} | {pcmCount}PCM {addCount}ADD");
+
+				return 0;
+			}
+
+			// Handle block data dump
+
+			offset = 6;
 			// For a block data dump, need to parse the tone map
 			byte[] buffer;
 			(buffer, offset) = Util.GetNextBytes(this.data, offset, ToneMap.Size);
@@ -129,7 +158,6 @@ namespace K5KTool
 					PCMSourceCount = pcmCount,
 					AdditiveSourceCount = addCount,
 				};
-				Console.WriteLine($"{patchInfo.Bank}{patchInfo.PatchNumber:D3} | {patchInfo.PatchName,8} | {patchInfo.PCMSourceCount}PCM {patchInfo.AdditiveSourceCount}ADD");
 
 				allPatchInfos.Add(patchInfo);
 			}

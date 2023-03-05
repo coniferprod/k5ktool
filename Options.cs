@@ -67,29 +67,4 @@ namespace K5KTool
         [Option('p', "params", Required = false, HelpText = "Parameters for custom waveform, comma-separated")]
         public string Params { get; set; }
     }
-
-    [Verb("convert", HelpText = "Convert between native file formats.")]
-    public class ConvertOptions
-    {
-        [Option('f', "filename", Required = true, HelpText = "Input file to be processed")]
-        public string FileName { get; set; }
-
-        [Option('i', "input", Required = true, HelpText = "Input file format (kaa, ka1)")]
-        public string Input { get; set; }
-
-        [Option('o', "output", Required = true, HelpText = "Output file format (ka1, syx)")]
-        public string Output { get; set; }
-
-        [Option('d', "directory", Required = true, HelpText = "Destination directory for conversion results")]
-        public string DirectoryName { get; set; }
-
-        [Option('b', "bank", Required = true, HelpText = "Bank name (A, B, D, E, F)")]
-        public char BankName { get; set; }
-
-        [Option('n', "number", Required = false, HelpText = "Patch number (1...128) for individual patches")]
-        public int PatchNumber { get; set; }
-
-        [Option('c', "channel", Required = false, HelpText = "MIDI channel (1...16)")]
-        public int Channel { get; set; }
-    }
 }

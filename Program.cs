@@ -10,6 +10,8 @@ using Newtonsoft.Json;
 using KSynthLib.Common;
 using KSynthLib.K5000;
 
+using SyxPack;
+
 
 namespace K5KTool
 {
@@ -27,8 +29,7 @@ namespace K5KTool
                 DumpOptions,
                 ReportOptions,
                 InitOptions,
-                EditOptions,
-                ConvertOptions
+                EditOptions
             >(args);
 
             parserResult.MapResult(
@@ -38,7 +39,6 @@ namespace K5KTool
                 (ReportOptions opts) => RunReportAndReturnExitCode(opts),
                 (InitOptions opts) => RunInitAndReturnExitCode(opts),
                 (EditOptions opts) => RunEditAndReturnExitCode(opts),
-                (ConvertOptions opts) => RunConvertAndReturnExitCode(opts),
                 errs => 1
             );
 
@@ -81,7 +81,7 @@ namespace K5KTool
 
             var allData = new List<byte>();
             // SysEx initiator and basic header data
-            allData.Add(SystemExclusiveConstants.Initiator);
+            allData.Add(SyxPack.Constants.Initiator);
             allData.AddRange(header.ToData());
 
             // Additional header data as required
@@ -116,7 +116,7 @@ namespace K5KTool
                 Console.Error.WriteLine(single.ToString());
                 allData.AddRange(singleData);
 
-                allData.Add(SystemExclusiveConstants.Terminator);
+                allData.Add(SyxPack.Constants.Terminator);
 
                 File.WriteAllBytes(opts.OutputFileName, allData.ToArray());
             }
@@ -138,16 +138,20 @@ namespace K5KTool
             string timestampString = timestamp.ToString("yyyy-MM-dd hh:mm:ss");
             //Console.WriteLine($"System Exclusive file: '{namePart}' ({timestampString}, {fileData.Length} bytes)");
 
-            var command = new ListCommand(fileData);
-            //Console.Error.WriteLine($"Card = {command.Header.Card}, Bank = {command.Header.Bank}, Kind = {command.Header.Kind}");
+            ManufacturerSpecificMessage message = (ManufacturerSpecificMessage) Message.Create(fileData);
+
+            var command = new ListCommand(message.Payload.ToArray());
+            Console.Error.WriteLine($"Channel = {command.Header.Channel}, Cardinality = {command.Header.Cardinality}, Bank = {command.Header.Bank}, Kind = {command.Header.Kind}");
 
             if (opts.Type.Equals("sysex"))
             {
-                if (command.Header.Card != Cardinality.Block)
+                /*
+                if (command.Header.Cardinality != Cardinality.Block)
                 {
                     Console.Error.WriteLine("Can only list blocks of patches");
                     return 0;
                 }
+                */
 
                 if (command.Header.Kind != PatchKind.Single)
                 {
@@ -213,7 +217,7 @@ namespace K5KTool
 
             var command = new DumpCommand(fileData);
 
-            if (command.Header.Card != Cardinality.Block)
+            if (command.Header.Cardinality != Cardinality.Block)
             {
                 Console.Error.WriteLine("Can only list blocks of patches");
                 return 0;
@@ -254,7 +258,7 @@ namespace K5KTool
             // Assume that we have at least one header's worth of data
             var header = new SystemExclusiveHeader(fileData);
 
-            return new DumpHeader(Cardinality.Block, BankIdentifier.A, PatchKind.Single);
+            return new DumpHeader(1, Cardinality.Block, BankIdentifier.A, PatchKind.Single);
         }
 
         private static void ProcessMessage(byte[] message)
@@ -493,12 +497,6 @@ namespace K5KTool
             }
 
             return 0;
-        }
-
-        public static int RunConvertAndReturnExitCode(ConvertOptions opts)
-        {
-            var cmd = new ConvertCommand(opts);
-            return cmd.Convert();
         }
     }
 }
