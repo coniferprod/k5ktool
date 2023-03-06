@@ -20,18 +20,14 @@ namespace K5KTool
 	{
 		public DumpHeader Header;
 
-		private byte[] data;
+		private List<byte> PatchData;
 
-        public ListCommand(byte[] payload)
+        public ListCommand(List<byte> patchData)
 		{
-			// The payload must not include the SysEx initiator
+			// The patch data must not include the SysEx initiator
 			// and manufacturer identifier.
-
-			this.data = new byte[payload.Length];
-			Array.Copy(payload, this.data, payload.Length);
-			//Console.WriteLine($"this.data length = {this.data.Length} bytes");
-
-			this.Header = new DumpHeader(data);
+			this.PatchData = new List<byte>(patchData);
+			this.Header = new DumpHeader(this.PatchData.ToArray());
         }
 
 		public int ListPatches()
@@ -40,9 +36,9 @@ namespace K5KTool
 
 			if (this.Header.Cardinality == Cardinality.One)
 			{
-				byte patchNumber = data[6];
+				byte patchNumber = this.PatchData[6];
 
-				List<byte> toneData = new List<byte>(this.data);
+				List<byte> toneData = new List<byte>(this.PatchData);
 				const int maxSinglePatchSize = 5434;  // biggest single patch has six ADD sources
 				List<byte> patchData = toneData.Skip(7).Take(maxSinglePatchSize).ToList();  // if the count is bigger than the sequence, returns all
 
@@ -71,10 +67,12 @@ namespace K5KTool
 
 			// Handle block data dump
 
+			byte[] data = this.PatchData.ToArray();
+
 			offset = 6;
 			// For a block data dump, need to parse the tone map
 			byte[] buffer;
-			(buffer, offset) = Util.GetNextBytes(this.data, offset, ToneMap.Size);
+			(buffer, offset) = Util.GetNextBytes(data, offset, ToneMap.Size);
 			// now the offset has been updated to past the tone map
 			//Console.Error.WriteLine($"offset = {offset}");
 			var toneMap = new ToneMap(buffer);
@@ -109,10 +107,10 @@ namespace K5KTool
 			{
 				var startOffset = offset;  // save the current offset because we need to copy more bytes later
 
-				var sizeToRead = Math.Max(minimumPatchSize, this.data.Length - offset);
+				var sizeToRead = Math.Max(minimumPatchSize, data.Length - offset);
 				//Console.WriteLine($"About to read {sizeToRead} bytes starting from offset {offset:X4}h");
 				// We don't know yet how many bytes the patch is, but it is at least the minimum size
-				(buffer, offset) = Util.GetNextBytes(this.data, offset, sizeToRead);
+				(buffer, offset) = Util.GetNextBytes(data, offset, sizeToRead);
 				// the offset has now been updated past the read size, so need to adjust it back later
 
 				//Console.Error.WriteLine(Util.HexDump(buffer));
@@ -144,7 +142,7 @@ namespace K5KTool
 				offset = startOffset;  // back up to the start of the patch data
 				// Read the whole patch now that we know its size
 				//Console.WriteLine($"About to read {patchSize} bytes starting from offset {offset:X4}h");
-				(buffer, offset) = Util.GetNextBytes(this.data, offset, patchSize);
+				(buffer, offset) = Util.GetNextBytes(data, offset, patchSize);
 
 				totalPatchSize += patchSize;
 

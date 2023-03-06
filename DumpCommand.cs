@@ -14,27 +14,24 @@ namespace K5KTool
 		public DumpHeader Header;
 		public uint PatchNumber;
 
-		private byte[] data;
+		private List<byte> PatchData;
 
-        public DumpCommand(byte[] fileData)
+        public DumpCommand(List<byte> fileData)
 		{
-			this.data = new byte[fileData.Length];
-			Array.Copy(fileData, this.data, fileData.Length);
-			//Console.WriteLine($"this.data length = {this.data.Length} bytes");
+			// The patch data must not include the SysEx initiator
+			// and manufacturer identifier.
 
-			// header[0] must be 0xF0
-			// header[1] must be 0x40 (Kawai ID)
-			this.Channel = data[2];
-			this.Header = new DumpHeader(data);
-			this.PatchNumber = data[8];  // only meaningful for one single, one drum inst, and one combi
+			this.PatchData = new List<byte>(fileData);
+			this.Header = new DumpHeader(this.PatchData.ToArray());
         }
 
 		public int DumpPatches(string outputFormat)
 		{
 			var offset = 8;   // skip to the tone map
 
+			byte[] data = this.PatchData.ToArray();
 			byte[] buffer;
-			(buffer, offset) = Util.GetNextBytes(this.data, offset, ToneMap.Size);
+			(buffer, offset) = Util.GetNextBytes(data, offset, ToneMap.Size);
 			var toneMap = new ToneMap(buffer);
 
 			List<int> patchNumbers = new List<int>();
@@ -60,9 +57,9 @@ namespace K5KTool
 			{
 				var startOffset = offset;  // save the current offset because we need to copy more bytes later
 
-				var sizeToRead = Math.Max(minimumPatchSize, this.data.Length - offset);
+				var sizeToRead = Math.Max(minimumPatchSize, data.Length - offset);
 				// We don't know yet how many bytes the patch is, but it is at least the minimum size
-				(buffer, offset) = Util.GetNextBytes(this.data, offset, sizeToRead);
+				(buffer, offset) = Util.GetNextBytes(data, offset, sizeToRead);
 				// the offset has now been updated past the read size, so need to adjust it back later
 
 				//Console.Error.WriteLine(Util.HexDump(buffer));
@@ -94,7 +91,7 @@ namespace K5KTool
 				offset = startOffset;  // back up to the start of the patch data
 				// Read the whole patch now that we know its size
 				//Console.WriteLine($"About to read {patchSize} bytes starting from offset {offset:X4}h");
-				(buffer, offset) = Util.GetNextBytes(this.data, offset, patchSize);
+				(buffer, offset) = Util.GetNextBytes(data, offset, patchSize);
 
 				totalPatchSize += patchSize;
 

@@ -79,10 +79,8 @@ namespace K5KTool
                     return -1;
             }
 
-            var allData = new List<byte>();
-            // SysEx initiator and basic header data
-            allData.Add(SyxPack.Constants.Initiator);
-            allData.AddRange(header.ToData());
+            var payload = new List<byte>();
+            payload.AddRange(header.ToData());
 
             // Additional header data as required
             var patchNumber = opts.PatchNumber - 1;
@@ -91,7 +89,7 @@ namespace K5KTool
                 Console.WriteLine("Patch number must be 1...128");
                 return -1;
             }
-            allData.Add((byte)patchNumber);
+            payload.Add((byte)patchNumber);
 
             SinglePatchGenerator generator;
             SinglePatchDescriptor descriptor;
@@ -114,11 +112,14 @@ namespace K5KTool
                 List<byte> singleData = single.GetSystemExclusiveData();
                 Console.Error.WriteLine(string.Format("Generated single data size: {0} bytes", singleData.Count));
                 Console.Error.WriteLine(single.ToString());
-                allData.AddRange(singleData);
+                payload.AddRange(singleData);
 
-                allData.Add(SyxPack.Constants.Terminator);
+                var message = new ManufacturerSpecificMessage(
+                    new ManufacturerDefinition(new byte[] { 0x40 }),
+                    payload.ToArray()
+                );
 
-                File.WriteAllBytes(opts.OutputFileName, allData.ToArray());
+                File.WriteAllBytes(opts.OutputFileName, message.ToData().ToArray());
             }
             else if (opts.PatchType.Equals("multi"))
             {
@@ -138,41 +139,20 @@ namespace K5KTool
             string timestampString = timestamp.ToString("yyyy-MM-dd hh:mm:ss");
             //Console.WriteLine($"System Exclusive file: '{namePart}' ({timestampString}, {fileData.Length} bytes)");
 
-            ManufacturerSpecificMessage message = (ManufacturerSpecificMessage) Message.Create(fileData);
+            var message = Message.Create(fileData) as ManufacturerSpecificMessage;
 
-            var command = new ListCommand(message.Payload.ToArray());
+            var command = new ListCommand(message.Payload);
             Console.Error.WriteLine($"Channel = {command.Header.Channel}, Cardinality = {command.Header.Cardinality}, Bank = {command.Header.Bank}, Kind = {command.Header.Kind}");
 
-            if (opts.Type.Equals("sysex"))
+            if (command.Header.Kind != PatchKind.Single)
             {
-                /*
-                if (command.Header.Cardinality != Cardinality.Block)
-                {
-                    Console.Error.WriteLine("Can only list blocks of patches");
-                    return 0;
-                }
-                */
-
-                if (command.Header.Kind != PatchKind.Single)
-                {
-                    Console.Error.WriteLine("Can only handle blocks of singles");
-                    return 0;
-                }
-
-                command.ListPatches();
-
+                Console.Error.WriteLine("Can only handle blocks of singles");
                 return 0;
             }
-            else if (opts.Type.Equals("bank"))
-            {
-                Console.WriteLine("Sorry, don't know how to handle native K5000 bank files yet!");
-                return 0;
-            }
-            else
-            {
-                Console.WriteLine($"Unknown file type: {opts.Type}");
-                return -1;
-            }
+
+            command.ListPatches();
+
+            return 0;
         }
 
         private static string MakeTextList(byte[] data, string title)
@@ -210,13 +190,10 @@ namespace K5KTool
 
         public static int RunDumpAndReturnExitCode(DumpOptions opts)
         {
-            //Console.Error.WriteLine("Dump not implemented yet");
-
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
-
-            var command = new DumpCommand(fileData);
-
+            var message = Message.Create(fileData) as ManufacturerSpecificMessage;
+            var command = new DumpCommand(message.Payload);
             if (command.Header.Cardinality != Cardinality.Block)
             {
                 Console.Error.WriteLine("Can only list blocks of patches");
@@ -411,21 +388,23 @@ namespace K5KTool
                 var cmd = new StringBuilder();
                 cmd.Append($"{commandName} dev \"{deviceName}\" hex syx");
 
-                List<byte> data = new List<byte>();
-                data.Add(0x40); // Kawai ID
-                data.Add(channel);
-                data.Add((byte)SystemExclusiveFunction.ParameterSend);
-                data.Add(0x00); // group number
-                data.Add(0x0a); // machine number for K5000
-                data.Add(0x02);
-                data.Add((byte)(0x40 + groupNumber));
-                data.Add((byte)sourceNumber);
-                data.Add((byte)i);
-                data.Add(0);
-                data.Add(0);
-                data.Add(levels[i]);
+                List<byte> payload = new List<byte>()
+                {
+                    0x40, // Kawai manufacturer ID
+                    channel,
+                    (byte)SystemExclusiveFunction.ParameterSend,
+                    0x00,  // group number
+                    0x0a,  // machine number for K5000
+                    0x02,
+                    (byte)(0x40 + groupNumber),
+                    (byte)sourceNumber,
+                    (byte)i,
+                    0,
+                    0,
+                    levels[i]
+                };
 
-                foreach (byte b in data)
+                foreach (byte b in payload)
                 {
                     cmd.Append(string.Format(" {0:X2}", b));
                 }
