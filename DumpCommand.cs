@@ -3,8 +3,8 @@ using System.Collections.Generic;
 
 using Newtonsoft.Json;
 
-using KSynthLib.K5000;
 using KSynthLib.Common;
+using KSynthLib.K5000;
 
 namespace K5KTool
 {
@@ -21,13 +21,14 @@ namespace K5KTool
 			// The patch data must not include the SysEx initiator
 			// and manufacturer identifier.
 
-			this.PatchData = new List<byte>(fileData);
+			this.PatchData = new List<byte>(fileData);  // save it for later
 			this.Header = new DumpHeader(this.PatchData.ToArray());
         }
 
 		public int DumpPatches(string outputFormat)
 		{
-			var offset = 8;   // skip to the tone map
+			//var offset = 8;   // skip to the tone map
+			var offset = 0;
 
 			byte[] data = this.PatchData.ToArray();
 			byte[] buffer;
@@ -42,8 +43,8 @@ namespace K5KTool
 				if (toneMap[i])
 				{
 					patchCount += 1;
-					//Console.Write(i + 1);
-					//Console.Write(" ");
+					Console.Write(i + 1);
+					Console.Write(" ");
 
 					patchNumbers.Add(i);
 				}

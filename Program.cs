@@ -119,7 +119,7 @@ namespace K5KTool
                     payload.ToArray()
                 );
 
-                File.WriteAllBytes(opts.OutputFileName, message.ToData().ToArray());
+                File.WriteAllBytes(opts.OutputFileName, message.Data.ToArray());
             }
             else if (opts.PatchType.Equals("multi"))
             {
@@ -193,6 +193,8 @@ namespace K5KTool
             string fileName = opts.FileName;
             byte[] fileData = File.ReadAllBytes(fileName);
             var message = Message.Create(fileData) as ManufacturerSpecificMessage;
+
+            // Construct the command from the payload (no delimiter or manufacturer)
             var command = new DumpCommand(message.Payload);
             if (command.Header.Cardinality != Cardinality.Block)
             {
@@ -205,6 +207,14 @@ namespace K5KTool
                 Console.Error.WriteLine("Can only handle blocks of singles");
                 return 0;
             }
+
+            Console.WriteLine("Dump header:");
+            Console.WriteLine($"Channel = {command.Header.Channel}");
+            Console.WriteLine($"Cardinality = {command.Header.Cardinality}");
+            Console.WriteLine($"Bank = {command.Header.Bank}");
+            Console.WriteLine($"Kind = {command.Header.Kind}");
+
+            Console.WriteLine($"Payload = {message.Payload.Count} bytes");
 
             command.DumpPatches(opts.Output);
 

@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <LangVersion>10.0</LangVersion>
-    <Version>0.7.0</Version>
+    <Version>0.7.2</Version>
     <Authors>Conifer Productions Oy</Authors>
     <Company>Conifer Productions Oy</Company>
     <Product>K5KTool</Product>
@@ -13,8 +13,8 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="KSynthLib" Version="0.18.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-    <PackageReference Include="SyxPack" Version="0.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="SyxPack" Version="0.7.0" />
+    <PackageReference Include="KSynthLib" Version="0.20.0" />
   </ItemGroup>
 </Project>
