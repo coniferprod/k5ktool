@@ -32,7 +32,7 @@ namespace K5KTool
 
 			byte[] data = this.PatchData.ToArray();
 			byte[] buffer;
-			(buffer, offset) = Util.GetNextBytes(data, offset, ToneMap.Size);
+			(buffer, offset) = Util.GetNextBytes(data, offset, ToneMap.DataSize);
 			var toneMap = new ToneMap(buffer);
 
 			List<int> patchNumbers = new List<int>();

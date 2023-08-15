@@ -72,7 +72,7 @@ namespace K5KTool
 			offset = 6;
 			// For a block data dump, need to parse the tone map
 			byte[] buffer;
-			(buffer, offset) = Util.GetNextBytes(data, offset, ToneMap.Size);
+			(buffer, offset) = Util.GetNextBytes(data, offset, ToneMap.DataSize);
 			// now the offset has been updated to past the tone map
 			//Console.Error.WriteLine($"offset = {offset}");
 			var toneMap = new ToneMap(buffer);

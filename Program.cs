@@ -109,7 +109,7 @@ namespace K5KTool
                 }
 
                 SinglePatch single = generator.Generate();
-                List<byte> singleData = single.GetSystemExclusiveData();
+                List<byte> singleData = single.Data;
                 Console.Error.WriteLine(string.Format("Generated single data size: {0} bytes", singleData.Count));
                 Console.Error.WriteLine(single.ToString());
                 payload.AddRange(singleData);
@@ -227,145 +227,38 @@ namespace K5KTool
             byte[] fileData = File.ReadAllBytes(fileName);
             Console.WriteLine($"Report on System Exclusive file '{fileName}' ({fileData.Length} bytes)");
 
-            List<byte[]> messages = Util.SplitBytesByDelimiter(fileData, 0xf7);
-            Console.WriteLine($"Contains {messages.Count} messages");
+            var message = Message.Create(fileData) as ManufacturerSpecificMessage;
 
-            foreach (byte[] message in messages)
+            // Construct the command from the payload (no delimiter or manufacturer)
+            var header = new DumpHeader(message.Payload.ToArray());
+            Console.WriteLine(header);
+
+            if (header.Cardinality == Cardinality.One)
             {
-                ProcessMessage(message);
+                int toneNumber = header.SubBytes[0] + 1;  // TODO: is this right?
+                Console.WriteLine($"Tone No = {toneNumber}");
+            }
+
+            if (header.Cardinality == Cardinality.Block)
+            {
+                if (header.Kind == PatchKind.Single)
+                {
+                    var toneMap = new ToneMap(header.SubBytes.ToArray());
+
+                    Console.WriteLine("Patches included:");
+                    for (var i = 0; i < ToneMap.ToneCount; i++)
+                    {
+                        if (toneMap[i])
+                        {
+                            Console.Write(i + 1);
+                            Console.Write(" ");
+                        }
+                    }
+                    Console.WriteLine();
+                }
             }
 
             return 0;
-        }
-
-        private static DumpHeader Identify(byte[] fileData)
-        {
-            Console.WriteLine($"File data length = {fileData.Length} bytes");
-
-            // Assume that we have at least one header's worth of data
-            var header = new SystemExclusiveHeader(fileData);
-
-            return new DumpHeader(1, Cardinality.Block, BankIdentifier.A, PatchKind.Single);
-        }
-
-        private static void ProcessMessage(byte[] message)
-        {
-            Console.WriteLine($"Message length = {message.Length} bytes");
-
-            var header = new SystemExclusiveHeader(message);
-            //Console.WriteLine("{0}", header);
-
-            var function = (SystemExclusiveFunction)header.Function;
-            string functionName = SystemExclusiveFunctionExtensions.Name(function);
-
-            switch (header.Substatus1)
-            {
-                case 0x00:
-                    Console.WriteLine("Single");
-                    break;
-
-                case 0x20:
-                    Console.WriteLine("Multi");
-                    break;
-
-                case 0x10:
-                    Console.WriteLine("Drum Kit");  // K5000W only
-                    break;
-
-                case 0x11:
-                    Console.WriteLine("Drum Inst");  // K5000W only
-                    break;
-
-                default:
-                    Console.Error.WriteLine(string.Format("Unknown substatus1: {0:X2}", header.Substatus1));
-                    break;
-            }
-
-            switch (header.Substatus2)
-            {
-                case 0x00:
-                    Console.WriteLine("Add Bank A");
-                    break;
-
-                case 0x01:
-                    Console.WriteLine("PCM Bank B");  // K5000W
-                    break;
-
-                case 0x02:
-                    Console.WriteLine("Add Bank D");
-                    break;
-
-                case 0x03:
-                    Console.WriteLine("Exp Bank E");
-                    break;
-
-                case 0x04:
-                    Console.WriteLine("Exp Bank F");
-                    break;
-
-                default:
-                    Console.WriteLine("Substatus2 is first data byte");
-                    break;
-            }
-
-            Console.WriteLine(functionName);
-
-            if (function == SystemExclusiveFunction.OneBlockDump)
-            {
-                int toneNumber = message[8] + 1;
-                Console.WriteLine($"Tone No = {toneNumber} ({message[8]})");
-            }
-
-            if (function == SystemExclusiveFunction.AllBlockDump)
-            {
-                var ToneMapData = new byte[ToneMap.Size];
-                Array.Copy(message, SystemExclusiveHeader.DataSize, ToneMapData, 0, ToneMap.Size);
-
-                var toneMap = new ToneMap(ToneMapData);
-
-                Console.WriteLine("Patches included:");
-                for (var i = 0; i < ToneMap.ToneCount; i++)
-                {
-                    if (toneMap[i])
-                    {
-                        Console.Write(i + 1);
-                        Console.Write(" ");
-                    }
-                }
-                Console.WriteLine();
-
-                var dataLength = message.Length - SystemExclusiveHeader.DataSize - ToneMap.Size;
-                var data = new byte[dataLength];
-                Array.Copy(message, SystemExclusiveHeader.DataSize + ToneMap.Size, data, 0, dataLength);
-                //Console.WriteLine(Util.HexDump(data));
-
-                var offset = 0;
-                byte checksum = data[offset];
-                Console.WriteLine($"checksum = {checksum:X2}");
-                offset += 1;
-            }
-
-            // Single additive patch for bank A or D:
-            if (header.Substatus1 == 0x00 && (header.Substatus2 == 0x00 || header.Substatus2 == 0x02))
-            {
-                var dataLength = message.Length - SystemExclusiveHeader.DataSize - ToneMap.Size;
-                var data = new byte[dataLength];
-                Array.Copy(message, SystemExclusiveHeader.DataSize + ToneMap.Size, data, 0, dataLength);
-                //Console.WriteLine(Util.HexDump(data));
-
-                // Chop the data into individual buffers based on the declared sizes
-                var offset = 0;
-                byte checksum = data[offset];
-                Console.WriteLine($"checksum = {checksum:X2}");
-                offset += 1;
-                var commonData = new byte[SingleCommonSettings.DataSize];
-                Array.Copy(data, offset, commonData, 0, SingleCommonSettings.DataSize);
-                //Console.WriteLine(Util.HexDump(commonData));
-                offset += SingleCommonSettings.DataSize;
-
-                var patch = new SinglePatch(data);
-                Console.WriteLine($"Name = {patch.SingleCommon.Name}");
-            }
         }
 
         // Create an init patch. This is a single patch with basic settings.
