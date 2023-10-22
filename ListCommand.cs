@@ -30,46 +30,40 @@ namespace K5KTool
 			this.Header = new DumpHeader(this.PatchData.ToArray());
         }
 
-		public int ListPatches()
+		private void ListOneSinglePatch()
 		{
-			var offset = 0;
+			byte patchNumber = this.PatchData[6];
 
-			if (this.Header.Cardinality == Cardinality.One)
+			List<byte> toneData = new List<byte>(this.PatchData);
+			const int maxSinglePatchSize = 5434;  // biggest single patch has six ADD sources
+			List<byte> patchData = toneData.Skip(7).Take(maxSinglePatchSize).ToList();  // if the count is bigger than the sequence, returns all
+
+			SinglePatch singlePatch = new SinglePatch(patchData.ToArray());
+			var patchName = singlePatch.SingleCommon.Name.Value;
+
+			// Find out how many PCM and ADD sources
+			var pcmCount = 0;
+			var addCount = 0;
+			foreach (var source in singlePatch.Sources)
 			{
-				byte patchNumber = this.PatchData[6];
-
-				List<byte> toneData = new List<byte>(this.PatchData);
-				const int maxSinglePatchSize = 5434;  // biggest single patch has six ADD sources
-				List<byte> patchData = toneData.Skip(7).Take(maxSinglePatchSize).ToList();  // if the count is bigger than the sequence, returns all
-
-				SinglePatch singlePatch = new SinglePatch(patchData.ToArray());
-				var patchName = singlePatch.SingleCommon.Name.Value;
-
-				// Find out how many PCM and ADD sources
-				var pcmCount = 0;
-				var addCount = 0;
-				foreach (var source in singlePatch.Sources)
+				if (source.IsAdditive)
 				{
-					if (source.IsAdditive)
-					{
-						addCount += 1;
-					}
-					else
-					{
-						pcmCount += 1;
-					}
+					addCount += 1;
 				}
-
-				Console.WriteLine($"{this.Header.Bank}{patchNumber:D3} | {patchName,8} | {pcmCount}PCM {addCount}ADD");
-
-				return 0;
+				else
+				{
+					pcmCount += 1;
+				}
 			}
 
-			// Handle block data dump
+			Console.WriteLine($"{this.Header.Bank}{patchNumber:D3} | {patchName.PadRight(8, ' ')} | {pcmCount}PCM {addCount}ADD");
+		}
 
+		private void ListSinglePatchBlock()
+		{
 			byte[] data = this.PatchData.ToArray();
 
-			offset = 6;
+			var offset = 6;
 			// For a block data dump, need to parse the tone map
 			byte[] buffer;
 			(buffer, offset) = Util.GetNextBytes(data, offset, ToneMap.DataSize);
@@ -95,7 +89,7 @@ namespace K5KTool
 			//Console.WriteLine($"\nTotal = {patchCount} patches");
 
 			// Whatever the first patch is, it must be at least this many bytes (always has at least two sources)
-			var minimumPatchSize = SingleCommonSettings.DataSize + 2 * KSynthLib.K5000.Source.DataSize;
+			var minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
 			//Console.Error.WriteLine($"minimum patch size = {minimumPatchSize}");
 
 			var totalPatchSize = 0;  // the total size of all the single patches
@@ -135,7 +129,7 @@ namespace K5KTool
 
 				// Figure out the total size of the single patch based on the counts
 				var patchSize = 1 + SingleCommonSettings.DataSize  // includes the checksum
-					+ patch.Sources.Length * KSynthLib.K5000.Source.DataSize  // all sources have this part
+					+ patch.Sources.Length * Source.DataSize  // all sources have this part
 					+ addCount * AdditiveKit.DataSize;
 				//Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
 
@@ -164,6 +158,55 @@ namespace K5KTool
 			{
 				Console.WriteLine($"{patchInfo.Bank}{patchInfo.PatchNumber:D3} | {patchInfo.PatchName,8} | {patchInfo.PCMSourceCount}PCM {patchInfo.AdditiveSourceCount}ADD");
 			}
+		}
+
+		private void ListMultiPatchBlock()
+		{
+			var offset = 0;
+
+			byte[] data = this.PatchData.ToArray();
+
+			var multiPatches = new List<MultiPatch>();
+
+			var patchSize = 1 +   // checksum
+				MultiCommon.DataSize +
+				MultiPatch.SectionCount * MultiSection.DataSize;
+
+			for (int i = 0; i < 64; i++)
+			{
+				byte[] buffer;
+				(buffer, offset) = Util.GetNextBytes(data, offset, patchSize);
+				var multiPatch = new MultiPatch(buffer);
+				multiPatches.Add(multiPatch);
+				offset += patchSize;
+			}
+
+			var patchNumber = 1;
+			foreach (var multiPatch in multiPatches)
+			{
+				Console.WriteLine($"{patchNumber:D2} {multiPatch.Name}");
+			}
+		}
+
+		private void ListUnknown()
+		{
+			Console.WriteLine($"Can't handle {this.Header.Cardinality} {this.Header.Kind}");
+		}
+
+		public int ListPatches()
+		{
+			Action listFunc = this.Header switch
+			{
+				{ Cardinality: Cardinality.One, Kind: PatchKind.Single }
+					=> ListOneSinglePatch,
+				{ Cardinality: Cardinality.Block, Kind: PatchKind.Single }
+					=> ListSinglePatchBlock,
+				{ Cardinality: Cardinality.Block, Kind: PatchKind.Combi }
+					=> ListMultiPatchBlock,
+				_ => ListUnknown
+			};
+
+			listFunc();
 
 			return 0;
 		}

@@ -1,7 +1,7 @@
-using System;
 using System.Collections.Generic;
 
 using KSynthLib.K5000;
+
 
 namespace K5KTool
 {
@@ -9,7 +9,7 @@ namespace K5KTool
     {
         public static readonly int DataSize = 6;
 
-        public byte Channel;
+        public int Channel;
         public SystemExclusiveFunction Function;
         public byte Group;
         public byte MachineID;
@@ -18,14 +18,15 @@ namespace K5KTool
 
         public SystemExclusiveHeader()
         {
-
+            Group = 0x00;  // synth group
+            MachineID = 0x0A;  // machine number for K5000
         }
 
         public SystemExclusiveHeader(byte[] data)
         {
             // data[0] = 0xf0
             // data[1] = 0x40
-            Channel = data[2];
+            Channel = (byte)(data[2] + 1);  // adjust to 1...16
             Function = (SystemExclusiveFunction)data[3];
             Group = data[4];
             MachineID = data[5];
@@ -37,6 +38,7 @@ namespace K5KTool
         {
             var buf = new List<byte>();
 
+            buf.Add((byte)(Channel - 1));  // adjust to 0...15
             buf.Add((byte)Function);
             buf.Add(Group);
             buf.Add(MachineID);

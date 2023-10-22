@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 
 using Newtonsoft.Json;
-
 using KSynthLib.Common;
 using KSynthLib.K5000;
+
 
 namespace K5KTool
 {
@@ -14,7 +14,7 @@ namespace K5KTool
 		public DumpHeader Header;
 		public uint PatchNumber;
 
-		private List<byte> PatchData;
+		private List<byte> PatchData;  // all the data, including the header
 
         public DumpCommand(List<byte> fileData)
 		{
@@ -27,8 +27,7 @@ namespace K5KTool
 
 		public int DumpPatches(string outputFormat)
 		{
-			//var offset = 8;   // skip to the tone map
-			var offset = 0;
+			var offset = this.Header.DataLength; // skip the header to the actual data
 
 			byte[] data = this.PatchData.ToArray();
 			byte[] buffer;
@@ -50,7 +49,7 @@ namespace K5KTool
 				}
 			}
 
-			var minimumPatchSize = SingleCommonSettings.DataSize + 2 * KSynthLib.K5000.Source.DataSize;
+			var minimumPatchSize = SingleCommonSettings.DataSize + 2 * Source.DataSize;
 			var totalPatchSize = 0;  // the total size of all the single patches
 			var allPatchInfos = new List<PatchInfo>();
 			var singlePatches = new List<SinglePatch>();
@@ -85,7 +84,7 @@ namespace K5KTool
 
 				// Figure out the total size of the single patch based on the counts
 				var patchSize = 1 + SingleCommonSettings.DataSize  // includes the checksum
-					+ patch.Sources.Length * KSynthLib.K5000.Source.DataSize  // all sources have this part
+					+ patch.Sources.Length * Source.DataSize  // all sources have this part
 					+ addCount * AdditiveKit.DataSize;
 				//Console.WriteLine($"{pcmCount}PCM {addCount}ADD size={patchSize} bytes");
 

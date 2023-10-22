@@ -27,7 +27,6 @@ namespace K5KTool
                 CreateOptions,
                 ListOptions,
                 DumpOptions,
-                ReportOptions,
                 InitOptions,
                 EditOptions
             >(args);
@@ -36,7 +35,6 @@ namespace K5KTool
                 (CreateOptions opts) => RunCreateAndReturnExitCode(opts),
                 (ListOptions opts) => RunListAndReturnExitCode(opts),
                 (DumpOptions opts) => RunDumpAndReturnExitCode(opts),
-                (ReportOptions opts) => RunReportAndReturnExitCode(opts),
                 (InitOptions opts) => RunInitAndReturnExitCode(opts),
                 (EditOptions opts) => RunEditAndReturnExitCode(opts),
                 errs => 1
@@ -144,11 +142,13 @@ namespace K5KTool
             var command = new ListCommand(message.Payload);
             Console.Error.WriteLine($"Channel = {command.Header.Channel}, Cardinality = {command.Header.Cardinality}, Bank = {command.Header.Bank}, Kind = {command.Header.Kind}");
 
+            /*
             if (command.Header.Kind != PatchKind.Single)
             {
                 Console.Error.WriteLine("Can only handle blocks of singles");
                 return 0;
             }
+            */
 
             command.ListPatches();
 
@@ -194,6 +194,8 @@ namespace K5KTool
             byte[] fileData = File.ReadAllBytes(fileName);
             var message = Message.Create(fileData) as ManufacturerSpecificMessage;
 
+            Console.WriteLine($"Payload = {message.Payload.Count} bytes");
+
             // Construct the command from the payload (no delimiter or manufacturer)
             var command = new DumpCommand(message.Payload);
             if (command.Header.Cardinality != Cardinality.Block)
@@ -208,55 +210,9 @@ namespace K5KTool
                 return 0;
             }
 
-            Console.WriteLine("Dump header:");
-            Console.WriteLine($"Channel = {command.Header.Channel}");
-            Console.WriteLine($"Cardinality = {command.Header.Cardinality}");
-            Console.WriteLine($"Bank = {command.Header.Bank}");
-            Console.WriteLine($"Kind = {command.Header.Kind}");
-
-            Console.WriteLine($"Payload = {message.Payload.Count} bytes");
+            Console.WriteLine($"Header = {command.Header.ToString()}");
 
             command.DumpPatches(opts.Output);
-
-            return 0;
-        }
-
-        public static int RunReportAndReturnExitCode(ReportOptions opts)
-        {
-            string fileName = opts.FileName;
-            byte[] fileData = File.ReadAllBytes(fileName);
-            Console.WriteLine($"Report on System Exclusive file '{fileName}' ({fileData.Length} bytes)");
-
-            var message = Message.Create(fileData) as ManufacturerSpecificMessage;
-
-            // Construct the command from the payload (no delimiter or manufacturer)
-            var header = new DumpHeader(message.Payload.ToArray());
-            Console.WriteLine(header);
-
-            if (header.Cardinality == Cardinality.One)
-            {
-                int toneNumber = header.SubBytes[0] + 1;  // TODO: is this right?
-                Console.WriteLine($"Tone No = {toneNumber}");
-            }
-
-            if (header.Cardinality == Cardinality.Block)
-            {
-                if (header.Kind == PatchKind.Single)
-                {
-                    var toneMap = new ToneMap(header.SubBytes.ToArray());
-
-                    Console.WriteLine("Patches included:");
-                    for (var i = 0; i < ToneMap.ToneCount; i++)
-                    {
-                        if (toneMap[i])
-                        {
-                            Console.Write(i + 1);
-                            Console.Write(" ");
-                        }
-                    }
-                    Console.WriteLine();
-                }
-            }
 
             return 0;
         }
@@ -282,7 +238,7 @@ namespace K5KTool
             return 0;
         }
 
-        private static List<string> SendHarmonics(string deviceName, byte channel, int sourceNumber, byte[] levels, int groupNumber)
+        private static List<string> SendHarmonics(string deviceName, int channel, int sourceNumber, byte[] levels, int groupNumber)
         {
             string commandName = "sendmidi";
             var lines = new List<string>();
@@ -291,21 +247,26 @@ namespace K5KTool
                 var cmd = new StringBuilder();
                 cmd.Append($"{commandName} dev \"{deviceName}\" hex syx");
 
-                List<byte> payload = new List<byte>()
+                SystemExclusiveHeader header = new()
                 {
-                    0x40, // Kawai manufacturer ID
-                    channel,
-                    (byte)SystemExclusiveFunction.ParameterSend,
-                    0x00,  // group number
-                    0x0a,  // machine number for K5000
-                    0x02,
-                    (byte)(0x40 + groupNumber),
-                    (byte)sourceNumber,
-                    (byte)i,
-                    0,
-                    0,
-                    levels[i]
+                    Channel = channel,
+                    Function = SystemExclusiveFunction.ParameterSend,
+                    Group = 0x00,
+                    MachineID = 0x0A, // machine number for K5000
+                    Substatus1 = 0x02,  // single tone ADD wave parameter
+                    Substatus2 = (byte)(0x40 + groupNumber)  // HC code 1/2 parameter
                 };
+
+                byte Substatus3 = (byte)(sourceNumber - 1);  // adjust to 00h~05h
+                byte Substatus4 = (byte)i;  // harmonic No. (00h~3Fh)
+
+                List<byte> payload = new();
+                payload.AddRange(header.ToData());
+                payload.Add(Substatus3);
+                payload.Add(Substatus4);
+                payload.Add(0x00);  // sub5 = dummy
+                payload.Add(0x00);  // dummy data
+                payload.Add(levels[i]);  // value (00h~7fh)
 
                 foreach (byte b in payload)
                 {
@@ -367,12 +328,13 @@ namespace K5KTool
                 levels = WaveformEngine.GetHarmonicLevels(options.Waveform, 64, 127);
             }
 
-            List<string> group1Lines = SendHarmonics(options.Device, 0, 1, levels, 1);
+            // Send paramaters on channel 1, for source 1
+            List<string> group1Lines = SendHarmonics(options.Device, 1, 1, levels, 1);
             foreach (var line in group1Lines)
             {
                 Console.WriteLine(line);
             }
-            List<string> group2Lines = SendHarmonics(options.Device, 0, 1, levels, 2);
+            List<string> group2Lines = SendHarmonics(options.Device, 1, 1, levels, 2);
             foreach (var line in group2Lines)
             {
                 Console.WriteLine(line);
